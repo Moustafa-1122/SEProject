@@ -11,3 +11,81 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+model clients {
+  client_id     Int      @id @default(autoincrement())
+  name          String   @db.VarChar(255)
+  mobile_number String   @db.VarChar(20)
+  is_active     Boolean  @default(true)
+  created_at    DateTime @default(now())
+
+  vehicles vehicles[]
+}
+
+model vehicles {
+  vehicle_id   Int      @id @default(autoincrement())
+  client_id    Int
+  plate_number String   @unique @db.VarChar(20)
+  make         String   @db.VarChar(100)
+  model        String   @db.VarChar(100)
+  year         Int
+  created_at   DateTime @default(now())
+
+  client          clients           @relation(fields: [client_id], references: [client_id])
+  service_records service_records[]
+  reminders       reminders[]
+
+  @@index([client_id])
+}
+
+model service_types {
+  service_type_id Int      @id @default(autoincrement())
+  service_name    String   @db.VarChar(255)
+  interval_month  Int
+  created_at      DateTime @default(now())
+
+  service_records service_records[]
+  reminders       reminders[]
+}
+
+model service_records {
+  service_record_id Int      @id @default(autoincrement())
+  vehicle_id        Int
+  service_type_id   Int
+  service_date      DateTime @db.Date
+  odometer          Int
+  created_at        DateTime @default(now())
+
+  vehicle      vehicles      @relation(fields: [vehicle_id], references: [vehicle_id])
+  service_type service_types @relation(fields: [service_type_id], references: [service_type_id])
+  reminders    reminders[]
+
+  @@index([vehicle_id])
+  @@index([service_type_id])
+}
+
+model reminders {
+  reminder_id            Int       @id @default(autoincrement())
+  vehicle_id             Int
+  service_type_id        Int
+  due_date               DateTime  @db.Date
+  contacted_date         DateTime? @db.Date
+  last_service_record_id Int?
+  created_at             DateTime  @default(now())
+  updated_at             DateTime  @updatedAt
+
+  vehicle             vehicles         @relation(fields: [vehicle_id], references: [vehicle_id])
+  service_type        service_types    @relation(fields: [service_type_id], references: [service_type_id])
+  last_service_record service_records? @relation(fields: [last_service_record_id], references: [service_record_id])
+
+  @@index([vehicle_id])
+  @@index([service_type_id])
+  @@index([due_date])
+}
+
+model users {
+  user_id       Int      @id @default(autoincrement())
+  email         String   @unique @db.VarChar(255)
+  password_hash String   @db.VarChar(255)
+  created_at    DateTime @default(now())
+}
