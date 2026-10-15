@@ -1,0 +1,249 @@
+title,body,labels,milestone
+"CHORE-01: Prisma schema, migrations and Railway database","Schema from the ERD, initial migration applied, DATABASE_URL via env (never committed).
+
+**Acceptance criteria**
+- [ ] schema.prisma matches the ERD (6 tables, all relations)
+- [ ] `npx prisma migrate dev` applies cleanly on an empty database
+- [ ] `npx prisma db seed` loads demo data and the verify queries pass
+- [ ] DATABASE_URL is read from env; `.env` is git-ignored and `.env.example` is committed
+- [ ] Meets the Definition of Done (see README)",chore,v1
+"CHORE-02: Project board, labels and README conventions","Branch naming, PR rules, Definition of Done and env-variable notes in the README; board set up and loaded with the backlog.
+
+**Acceptance criteria**
+- [ ] README has branch naming, PR rules, Definition of Done and Environment variables
+- [ ] Board is public with columns Backlog, To Do, In Progress, In Review, Done
+- [ ] All backlog issues are on the board with labels and milestones
+- [ ] Repo link and board link submitted on Discord
+- [ ] Meets the Definition of Done (see README)",chore,v1
+FR-001: Create client with one vehicle,"The system must create a client with name, mobile number, and one vehicle (plate number, make, model) when an employee submits the new-client form with all fields filled, and must save the mobile number in international format (961 + number, without leading 0).
+
+**Acceptance criteria**
+- [ ] Submitting all fields creates one client and one linked vehicle
+- [ ] Submitting with any field empty shows a message and saves nothing
+- [ ] Mobile `03123456` is saved as `9613123456`; `71898929` as `96171898929`
+- [ ] A duplicate plate number is rejected with a clear message
+- [ ] Meets the Definition of Done (see README)",feature,v1
+FR-002: Edit client name or mobile number,"The system must update a client's name or mobile number when an employee saves changes on the client's profile.
+
+**Acceptance criteria**
+- [ ] Saving a new name updates it on the profile and the dashboard
+- [ ] A new mobile number is saved in 961 format
+- [ ] An empty name or invalid mobile is rejected with a message
+- [ ] Meets the Definition of Done (see README)",feature,v1
+FR-006: Log a service record,"The system must save a service record (service type, service date today or earlier, odometer) for a vehicle when an employee submits the log-service form.
+
+**Acceptance criteria**
+- [ ] Form asks for service type, date and odometer
+- [ ] A date of today or earlier is accepted; a future date is rejected
+- [ ] Odometer must be a positive whole number
+- [ ] After saving, a row exists in service_records for that vehicle
+- [ ] Meets the Definition of Done (see README)",feature,v1
+FR-007: Calculate next due date on service save,"The system must set the vehicle's next due date for a service type to service date + the type's interval in months when a service record is saved. Depends on FR-008.
+
+**Acceptance criteria**
+- [ ] Oil change (6 months) logged on 2026-04-14 gives due date 2026-10-14
+- [ ] Logging the same type again updates the existing reminder instead of creating a duplicate
+- [ ] Month ends are handled (31 Aug + 6 months = 28 Feb)
+- [ ] The reminder points to the new service record (last_service_record_id)
+- [ ] Meets the Definition of Done (see README)",feature,v1
+FR-008: Create service types with interval,"The system must let an employee create a service type with a name and a reminder interval in months.
+
+**Acceptance criteria**
+- [ ] Form takes a name and an interval in months (whole number, at least 1)
+- [ ] A saved type appears in the log-service dropdown
+- [ ] An empty name or an interval below 1 is rejected
+- [ ] Meets the Definition of Done (see README)",feature,v1
+FR-011: Dashboard of due and overdue vehicles,"The system must list every active vehicle whose next due date is within 7 days or already past, showing client name, mobile, plate, service type, due date and contacted date, most overdue first.
+
+**Acceptance criteria**
+- [ ] Shows reminders due within 7 days or overdue
+- [ ] Each row shows client name, mobile, plate, service type, due date and contacted date (empty if none)
+- [ ] Sorted most overdue first
+- [ ] A reminder due in 8+ days and vehicles of inactive clients are not shown
+- [ ] Meets the Definition of Done (see README)",feature,v1
+FR-015a: Login with email and password,"The system must sign a user in when they submit a registered email and its correct password (single shared workshop account).
+
+**Acceptance criteria**
+- [ ] Registered email and correct password signs in and opens the dashboard
+- [ ] Any other page redirects to the login page when signed out
+- [ ] Meets the Definition of Done (see README)",feature,v1
+FR-015b: Generic login error message,"The system must show 'email or password is incorrect' without saying which one when either is wrong.
+
+**Acceptance criteria**
+- [ ] A wrong password shows exactly: email or password is incorrect
+- [ ] An unknown email shows the same message
+- [ ] Nothing on the page reveals which of the two was wrong
+- [ ] Meets the Definition of Done (see README)",feature,v1
+FR-017: Mark reminder as contacted,"The system must save today's date as the contacted date on a reminder when an employee taps 'Mark contacted' on the dashboard row.
+
+**Acceptance criteria**
+- [ ] Tapping 'Mark contacted' saves today's date in contacted_date
+- [ ] The row stays on the dashboard and shows the contacted date
+- [ ] The row leaves the dashboard only after a new service is logged (FR-007)
+- [ ] Meets the Definition of Done (see README)",feature,v1
+NFR-001: Dashboard loads in under 3s on 4G,"Dashboard loads in under 3 seconds on a 4G mobile connection with 2,000 clients stored.
+
+**Acceptance criteria**
+- [ ] Database seeded with 2,000 clients
+- [ ] Chrome DevTools throttled to Fast 4G: dashboard fully loads in under 3 seconds on 3 runs
+- [ ] Result recorded in the issue
+- [ ] Meets the Definition of Done (see README)",nfr,v1
+NFR-002: 95% of API responses under 500ms,"95% of API responses return in under 500ms with 10 concurrent users.
+
+**Acceptance criteria**
+- [ ] Load test (k6 or autocannon) with 10 concurrent users
+- [ ] p95 response time is under 500ms
+- [ ] Test command and result recorded in the issue
+- [ ] Meets the Definition of Done (see README)",nfr,v1
+"NFR-003/011: Capacity target: 5,000 clients","Meet NFR-001 and NFR-002 with 5,000 clients, 8,000 vehicles, 50,000 service records and 10 concurrent users.
+
+**Acceptance criteria**
+- [ ] Bulk seed script creates 5,000 clients, 8,000 vehicles, 50,000 service records
+- [ ] NFR-001 and NFR-002 tests pass on that data
+- [ ] Missing indexes added if a test fails
+- [ ] Meets the Definition of Done (see README)",nfr,v1
+NFR-004: Daily automatic backups + monthly restore test,"Automatic database backup every 24h; restorable from latest backup within 1 hour; restore test verified monthly.
+
+**Acceptance criteria**
+- [ ] Automatic daily backups are enabled on the hosting database
+- [ ] Restore steps are written in the README or docs
+- [ ] A restore test on a copy completes in under 1 hour and is logged
+- [ ] A monthly reminder for the restore test exists
+- [ ] Meets the Definition of Done (see README)",nfr,v1
+NFR-005: Show save-failed message and keep form input,"When a database request fails, show a message that the record was not saved and keep what the employee typed.
+
+**Acceptance criteria**
+- [ ] With the database unreachable, submitting a form shows a 'record was not saved' message
+- [ ] All typed values stay in the form
+- [ ] No success message is shown on failure
+- [ ] Meets the Definition of Done (see README)",nfr,v1
+NFR-006: HTTPS only,"All client-server communication must use HTTPS.
+
+**Acceptance criteria**
+- [ ] The deployed app is served over HTTPS with a valid certificate
+- [ ] http:// requests redirect to https://
+- [ ] No mixed-content warnings in the browser console
+- [ ] Meets the Definition of Done (see README)",nfr,v1
+NFR-007: Hash passwords with bcrypt,"User passwords must be stored hashed using bcrypt.
+
+**Acceptance criteria**
+- [ ] users.password_hash values start with $2 (bcrypt)
+- [ ] No plain-text password in the database, code, logs or seed output
+- [ ] Login compares with bcrypt.compare
+- [ ] Meets the Definition of Done (see README)",nfr,v1
+NFR-008: Session expires after 12h inactivity,"End a session after 12 hours of inactivity.
+
+**Acceptance criteria**
+- [ ] Session lifetime is configured to 12 hours of inactivity
+- [ ] With the lifetime shortened for a test, an expired session redirects to login
+- [ ] Activity extends the session
+- [ ] Meets the Definition of Done (see README)",nfr,v1
+NFR-009a: Parameterized queries only,"Every database query is parameterized, no user input concatenated into SQL; verified by code review.
+
+**Acceptance criteria**
+- [ ] All queries use the Prisma client or parameterized values
+- [ ] grep finds no $queryRawUnsafe and no SQL built by string concatenation
+- [ ] Reviewer ticks this in the PR
+- [ ] Meets the Definition of Done (see README)",nfr,v1
+NFR-009b: Escape user-entered text on display,"Escape all user text before display so a client name with a script tag renders as plain text.
+
+**Acceptance criteria**
+- [ ] A client named <script>alert(1)</script> shows as plain text on the dashboard, profile and search results
+- [ ] No alert fires and no HTML is injected
+- [ ] Meets the Definition of Done (see README)",nfr,v1
+NFR-010: Client data only for authenticated users,"Client data must only be accessible to an authenticated user (logged-out request to a client page must fail).
+
+**Acceptance criteria**
+- [ ] A logged-out request to a client page redirects to login
+- [ ] A logged-out request to any API route returns 401 and no data
+- [ ] Checked for every route that returns client data
+- [ ] Meets the Definition of Done (see README)",nfr,v1
+NFR-013: New employee onboarding under 5 minutes,"A new employee can register a client and log a service in under 5 minutes with no docs.
+
+**Acceptance criteria**
+- [ ] A person who never saw the app registers a client and logs a service in under 5 minutes, timed with a stopwatch
+- [ ] No documentation or help given during the test
+- [ ] Result recorded; if it fails, promote FR-004 (search) to v1
+- [ ] Meets the Definition of Done (see README)",nfr,v1
+NFR-015: No horizontal scroll at 375px,"Dashboard and log-service form display without horizontal scrolling on a 375px-wide screen.
+
+**Acceptance criteria**
+- [ ] In DevTools at 375px width, the dashboard has no horizontal scrollbar
+- [ ] Same for the log-service form
+- [ ] All buttons and text are reachable
+- [ ] Meets the Definition of Done (see README)",nfr,v1
+NFR-018: Browser support: latest two major versions,"Pass all v1 acceptance tests on latest two major versions of the browsers [TO CONFIRM WITH OWNER], desktop and mobile.
+
+**Acceptance criteria**
+- [ ] Owner confirms which browsers and phones they use; the list is written in this issue
+- [ ] All v1 acceptance tests pass on the latest two major versions of each, desktop and mobile
+- [ ] Meets the Definition of Done (see README)",nfr,v1
+FR-003: Deactivate client (keep history),"Mark a client inactive and remove their vehicles from the dashboard, keeping service history, when an employee confirms.
+
+**Acceptance criteria**
+- [ ] A confirmation dialog appears before deactivating
+- [ ] The client is marked is_active = false, not deleted
+- [ ] Their vehicles no longer appear on the dashboard
+- [ ] Their service records are still in the database
+- [ ] Meets the Definition of Done (see README)",feature,v1.1
+"FR-004: Search clients by name, mobile or plate","List every client whose name, mobile or plate contains the search text when at least 2 characters are typed. Promote to v1 if NFR-013 fails without it.
+
+**Acceptance criteria**
+- [ ] Search starts at 2 characters; 1 character does nothing
+- [ ] Matches name, mobile or plate number that contains the text, case-insensitive
+- [ ] No match shows a 'no results' message
+- [ ] Meets the Definition of Done (see README)",feature,v1.1
+FR-005: Add vehicle to existing client,"Add a vehicle (plate, make, model) to an existing client via the add-vehicle form on the client's profile.
+
+**Acceptance criteria**
+- [ ] Add-vehicle form is on the client's profile
+- [ ] The new vehicle is linked to that client and shown on the profile
+- [ ] A duplicate plate number is rejected
+- [ ] Meets the Definition of Done (see README)",feature,v1.1
+FR-012: Change a reminder's due date,"Change the next due date for a service type to the date the employee picks when they save it on the reminder.
+
+**Acceptance criteria**
+- [ ] Picking a date and saving updates the reminder's due date
+- [ ] The dashboard shows the new date and position
+- [ ] An empty or invalid date is rejected
+- [ ] Meets the Definition of Done (see README)",feature,v1.1
+FR-013: Service history list per vehicle,"List every service record for a vehicle, newest first, with date, service type and odometer, on the vehicle's page.
+
+**Acceptance criteria**
+- [ ] Vehicle page lists all its service records, newest first
+- [ ] Each row shows date, service type and odometer
+- [ ] A vehicle with no records shows an empty-state message
+- [ ] Meets the Definition of Done (see README)",feature,v1.1
+FR-018: WhatsApp deep-link reminder button,"Generate wa.me/<mobile>?text=<message with plate, service type, due date> that opens WhatsApp prefilled when the employee taps 'Send on WhatsApp'. Depends on FR-001 international format.
+
+**Acceptance criteria**
+- [ ] Each due or overdue dashboard row has a 'Send on WhatsApp' button
+- [ ] The link is wa.me/<961 number>?text=<URL-encoded message> with plate, service type and due date
+- [ ] Tapping it opens WhatsApp with the message prefilled
+- [ ] Meets the Definition of Done (see README)",feature,v1.1
+NFR-016: Service-layer test coverage above 60%,"Test coverage on the service layer must be above 60%.
+
+**Acceptance criteria**
+- [ ] Coverage report shows the service layer above 60%
+- [ ] The test command is documented in the README
+- [ ] Meets the Definition of Done (see README)",nfr,v1.1
+FR-014: Export vehicle service history as PDF,"Generate a PDF of a vehicle's service history with workshop name and plate number at the top when Export is clicked.
+
+**Acceptance criteria**
+- [ ] Clicking Export downloads a PDF
+- [ ] Workshop name and plate number are at the top
+- [ ] Service records are listed newest first
+- [ ] Meets the Definition of Done (see README)",feature,v2
+NFR-020: Keyboard navigable UI,"All interactive elements must be keyboard-navigable.
+
+**Acceptance criteria**
+- [ ] Every button, link and form control can be reached with Tab
+- [ ] Focus is visible, Enter and Space activate controls
+- [ ] No keyboard traps
+- [ ] Meets the Definition of Done (see README)",nfr,v3
+NFR-021: WCAG AA color contrast,"Color contrast meets WCAG AA (4.5:1 for normal text).
+
+**Acceptance criteria**
+- [ ] Every text/background pair is at least 4.5:1, checked with a contrast tool or Lighthouse
+- [ ] Failures are fixed or listed in the issue
+- [ ] Meets the Definition of Done (see README)",nfr,v3
