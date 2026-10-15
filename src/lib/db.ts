@@ -1,3 +1,5 @@
+//lib is any externel service that we use to store data, in this case we are using prisma with postgresql
+
 import { PrismaPg } from "@prisma/adapter-pg"
 import { PrismaClient } from "@prisma/client/extension"
 
