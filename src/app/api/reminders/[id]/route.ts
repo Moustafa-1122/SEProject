@@ -1,4 +1,5 @@
 import NotFoundException from "@/exceptions/not-found-exception";
+import { logError } from "@/lib/logger";
 import { ReminderService } from "@/services/reminderService";
 import { postponeReminderSchema } from "@/types/reminder";
 import { NextRequest, NextResponse } from "next/server";
@@ -23,7 +24,7 @@ export async function PATCH(
     if (error instanceof NotFoundException) {
       return NextResponse.json({ error: error.message }, { status: 404 });
     }
-    console.error("PATCH /api/reminders/[id] failed:", error);
+    logError("PATCH /api/reminders/[id] failed:", error);
     return NextResponse.json({ error: "Error postponing reminder" }, { status: 500 });
   }
 }
