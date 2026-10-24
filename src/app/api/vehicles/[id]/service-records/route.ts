@@ -1,4 +1,5 @@
 import NotFoundException from "@/exceptions/not-found-exception";
+import { logError } from "@/lib/logger";
 import { VehicleService } from "@/services/vehicle-service";
 import { serviceRecordSchema } from "@/types/service-record";
 
@@ -18,7 +19,7 @@ export async function GET(
     if (error instanceof NotFoundException) {
       return NextResponse.json({ error: error.message }, { status: 404 });
     }
-    console.error("GET /api/vehicles/[id]/service-records failed:", error);
+    logError("GET /api/vehicles/[id]/service-records", error);
     return NextResponse.json({ error: "Error fetching service records" }, { status: 500 });
   }
 }
@@ -43,7 +44,7 @@ export async function POST(
     if (error instanceof NotFoundException) {
       return NextResponse.json({ error: error.message }, { status: 404 });
     }
-    console.error("POST /api/vehicles/[id]/service-records failed:", error);
+    logError("POST /api/vehicles/[id]/service-records failed:", error);
     return NextResponse.json({ error: "Error creating service record" }, { status: 500 });
   }
 }

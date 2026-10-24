@@ -1,6 +1,7 @@
 
 import NotFoundException from "@/exceptions/not-found-exception";
 import UniqueExecption from "@/exceptions/unique-exception";
+import { logError } from "@/lib/logger";
 import { userRepository } from "@/repository/user-repository";
 import { UserService } from "@/services/user-service";
 import { updateClientSchema } from "@/types/client";
@@ -24,7 +25,7 @@ export async function GET(
     if (error instanceof NotFoundException) {
       return NextResponse.json({ error: error.message }, { status: 404 });
     }
-    console.error("GET /api/clients/:id failed:", error);
+    logError("GET /api/clients/:id failed:", error);
     return NextResponse.json({ error: "Error fetching client" }, { status: 500 });
   }  
 }

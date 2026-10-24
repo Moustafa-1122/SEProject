@@ -1,4 +1,5 @@
 import NotFoundException from "@/exceptions/not-found-exception";
+import { logError } from "@/lib/logger";
 import { UserService } from "@/services/user-service";
 import { NextResponse } from "next/server"
 
@@ -18,7 +19,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         if (error instanceof NotFoundException) {
             return NextResponse.json({ error: error.message }, { status: 404 });
         }
-        console.error("POST /api/clients/:id/deactivate failed:", error);
+        logError("POST /api/clients/:id/deactivate failed:", error);
         return NextResponse.json({ error: "Error deactivating client" }, { status: 500 });
     }
 
