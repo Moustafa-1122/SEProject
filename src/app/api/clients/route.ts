@@ -4,6 +4,7 @@ import UniqueExecption from "@/exceptions/unique-exception";
 import { zodValidationSchema } from "@/types/client";
 import { NextRequest, NextResponse } from "next/server";
 import {UserService} from "@/services/user-service";
+import { logError } from "@/lib/logger";
 
 
 
@@ -28,7 +29,7 @@ if (!parseData.success) {
     if(error instanceof UniqueExecption){
       return NextResponse.json({ error: error.message }, { status: 409 });
     }
-    console.error("POST /api/clients failed:", error)
+    logError("POST /api/clients failed:", error)
     return NextResponse.json(error, { status: 500 });
     
   }

@@ -1,5 +1,6 @@
 import NotFoundException from "@/exceptions/not-found-exception";
 import UniqueExecption from "@/exceptions/unique-exception";
+import { logError } from "@/lib/logger";
 import { UserService } from "@/services/user-service";
 import { vehicleSchema } from "@/types/client";
 import { NextRequest, NextResponse } from "next/server";
@@ -30,7 +31,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     if (error instanceof UniqueExecption) {
       return NextResponse.json({ error: error.message }, { status: 409 });
     }
-    console.error("POST /api/clients/:id/vehicles failed:", error);
+    logError("POST /api/clients/:id/vehicles failed:", error);
     return NextResponse.json({ error: "Error adding vehicle" }, { status: 500 });
   }
 

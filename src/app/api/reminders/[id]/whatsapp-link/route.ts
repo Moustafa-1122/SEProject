@@ -1,4 +1,5 @@
 import NotFoundException from "@/exceptions/not-found-exception";
+import { logError } from "@/lib/logger";
 import { ReminderService } from "@/services/reminderService";
 
 import { NextRequest, NextResponse } from "next/server";
@@ -17,7 +18,7 @@ export async function GET(
     if (error instanceof NotFoundException) {
       return NextResponse.json({ error: error.message }, { status: 404 });
     }
-    console.error("GET /api/reminders/[id]/whatsapp-link failed:", error);
+    logError("GET /api/reminders/[id]/whatsapp-link failed:", error);
     return NextResponse.json({ error: "Error generating WhatsApp link" }, { status: 500 });
   }
 }
