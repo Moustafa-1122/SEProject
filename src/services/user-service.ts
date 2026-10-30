@@ -103,6 +103,24 @@ static async deactivateClient(client_id: number) {
     throw new Error("failed to deactivate client");
 }
 
+static async activateClient(client_id: number) {
+    try {
+        const client = await userRepository.activate(client_id);
+        return{
+            id:client.client_id,
+            name:client.name,
+            mobile_number:client.mobile_number,
+            is_active:client.is_active,
+        }
+    } catch (error:any) {
+        if(error.code === "P2025"){
+           throw new NotFoundException("Client not found");
+    }
+}
+    throw new Error("failed to activate client");
+}
+
+
 static async addVehicleToClient(client_id: number, data: vehicleSchema) {
   const client = await userRepository.findById(client_id);
   if(!client){

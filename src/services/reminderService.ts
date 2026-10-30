@@ -13,6 +13,7 @@ export class ReminderService {
         return reminders.map((r) => ({// map to the required fields(na2i fields muhadadin ma tjib klshi) without map,ALL the tables that relations return 
             id: r.reminder_id,
             client_name: r.vehicle.client.name,
+            client_id: r.vehicle.client.client_id,
             mobile_number: r.vehicle.client.mobile_number,
             make: r.vehicle.make,
             model: r.vehicle.model,

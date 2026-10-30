@@ -53,6 +53,13 @@ static async deactivate(client_id: number) {
   })
 }
 
+static async activate(client_id: number) {
+  return prisma.clients.update({
+    where: { client_id },
+    data: { is_active: true },
+  })
+}
+
 static async addVehicleToClient(client_id: number, data: vehicleSchema) {
   return prisma.vehicles.create({
     data:{

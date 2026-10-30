@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
     const clients = await UserService.getClients(search);
     return NextResponse.json( clients , { status: 200 });// {ma3enta badi client tbayen bl response ex:clients:[...]}
   } catch (error: any) {
-    console.error("GET /api/clients failed:", error);
+    logError("GET /api/clients failed:", error);
     return NextResponse.json({ error: "Error fetching clients" }, { status: 500 });
   }
 }
