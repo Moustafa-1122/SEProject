@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { cn } from "cn"
+import { ar } from "date-fns/locale"
 import {
   DayPicker,
   getDefaultClassNames,
@@ -11,6 +12,7 @@ import {
 
 import { Button, buttonVariants } from "@/components/ui/button"
 import { ChevronLeftIcon, ChevronRightIcon, ChevronDownIcon } from "lucide-react"
+import { useLanguage } from "@/components/language-provider"
 
 function Calendar({
   className,
@@ -25,7 +27,9 @@ function Calendar({
 }: React.ComponentProps<typeof DayPicker> & {
   buttonVariant?: React.ComponentProps<typeof Button>["variant"]
 }) {
+  const { language } = useLanguage()
   const defaultClassNames = getDefaultClassNames()
+  const activeLocale = locale ?? (language === "ar" ? ar : undefined)
 
   return (
     <DayPicker
@@ -37,10 +41,10 @@ function Calendar({
         className
       )}
       captionLayout={captionLayout}
-      locale={locale}
+      locale={activeLocale}
       formatters={{
         formatMonthDropdown: (date) =>
-          date.toLocaleString(locale?.code, { month: "short" }),
+          date.toLocaleString(activeLocale?.code, { month: "short" }),
         ...formatters,
       }}
       classNames={{
@@ -162,7 +166,7 @@ function Calendar({
           )
         },
         DayButton: ({ ...props }) => (
-          <CalendarDayButton locale={locale} {...props} />
+          <CalendarDayButton locale={activeLocale} {...props} />
         ),
         WeekNumber: ({ children, ...props }) => {
           return (
@@ -191,7 +195,11 @@ function CalendarDayButton({
 
   const ref = React.useRef<HTMLButtonElement>(null)
   React.useEffect(() => {
-    if (modifiers.focused) ref.current?.focus()
+    try {
+      if (modifiers.focused) ref.current?.focus()
+    } catch (error) {
+      console.error("Failed to focus calendar day button:", error)
+    }
   }, [modifiers.focused])
 
   return (

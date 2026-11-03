@@ -1,10 +1,11 @@
 import { Suspense } from "react";
-import ClientDetailsContent from "./ClientDetailsContent";
-
+import ClientDetailsContent, {
+  ClientDetailsSkeleton,
+} from "./ClientDetailsContent";
 
 export default function ClientDetailsPage() {
   return (
-    <Suspense fallback={<p className="p-8">Loading...</p>}>
+    <Suspense fallback={<ClientDetailsSkeleton />}>
       <ClientDetailsContent />
     </Suspense>
   );

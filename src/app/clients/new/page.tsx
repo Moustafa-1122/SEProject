@@ -11,9 +11,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { NumericInput } from "@/components/ui/numeric-input";
+import { useLanguage } from "@/components/language-provider";
 
 export default function NewClientPage() {
   const router = useRouter();
+  const { t } = useLanguage();
 
   const [name, setName] = useState("");
   const [mobileNumber, setMobileNumber] = useState("");
@@ -50,7 +53,7 @@ export default function NewClientPage() {
     setLoading(false);
 
     if (!res.ok) {
-      setError(data.error);
+      setError(t(data.error));
       return;
     }
 
@@ -63,19 +66,19 @@ export default function NewClientPage() {
       <Button
         variant="outline"
         onClick={() => router.back()}
-        className="fixed left-4 top-4 z-50 inline-flex items-center gap-2 rounded-lg border border-blue-500/30 bg-gradient-to-r from-[#0b1733] to-[#080f20] px-4 py-2 text-sm font-medium text-blue-300 shadow-[0_0_20px_rgba(37,99,235,0.08)] transition-all duration-200 hover:border-blue-400/60 hover:bg-blue-500/10 hover:text-white hover:shadow-[0_0_20px_rgba(37,99,235,0.2)] focus-visible:ring-2 focus-visible:ring-blue-500/50"
+        className="fixed start-4 top-4 z-50 inline-flex items-center gap-2 rounded-lg border border-blue-500/30 bg-gradient-to-r from-[#0b1733] to-[#080f20] px-4 py-2 text-sm font-medium text-blue-300 shadow-[0_0_20px_rgba(37,99,235,0.08)] transition-all duration-200 hover:border-blue-400/60 hover:bg-blue-500/10 hover:text-white hover:shadow-[0_0_20px_rgba(37,99,235,0.2)] focus-visible:ring-2 focus-visible:ring-blue-500/50"
       >
-        <span className="text-lg">←</span>
-        Back
+        <span className="text-lg rtl:rotate-180">←</span>
+        {t("Back")}
       </Button>
 
       <Card className="w-full max-w-md overflow-hidden rounded-2xl border border-blue-500/30 bg-gradient-to-br from-[#0b1733] via-[#0b1530] to-[#080f20] text-slate-100 shadow-[0_0_40px_rgba(37,99,235,0.10)]">
         <CardHeader className="border-b border-blue-500/15 px-6 pb-5 pt-6">
           <CardTitle className="bg-gradient-to-r from-white via-blue-100 to-blue-400 bg-clip-text text-2xl font-bold text-transparent">
-            Add New Client
+            {t("Add New Client")}
           </CardTitle>
           <p className="mt-2 text-sm text-slate-400">
-            Enter client details and their vehicle information.
+            {t("Enter client details and their vehicle information.")}
           </p>
         </CardHeader>
 
@@ -84,13 +87,13 @@ export default function NewClientPage() {
             {/* Client Name */}
             <div className="flex flex-col gap-2">
               <Label htmlFor="name" className="text-sm font-medium text-blue-100">
-                Client Name
+                {t("Client Name")}
               </Label>
               <Input
                 id="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Enter client name"
+                placeholder={t("Enter client name")}
                 required
                 className="border-blue-500/25 bg-[#060d1d]/80 text-slate-100 placeholder:text-slate-500 focus-visible:ring-blue-500/50"
               />
@@ -99,13 +102,13 @@ export default function NewClientPage() {
             {/* Mobile Number */}
             <div className="flex flex-col gap-2">
               <Label htmlFor="mobile" className="text-sm font-medium text-blue-100">
-                Mobile Number
+                {t("Mobile Number")}
               </Label>
-              <Input
+              <NumericInput
                 id="mobile"
                 placeholder="96171898929"
                 value={mobileNumber}
-                onChange={(e) => setMobileNumber(e.target.value)}
+                onValueChange={setMobileNumber}
                 required
                 className="border-blue-500/25 bg-[#060d1d]/80 text-slate-100 placeholder:text-slate-500 focus-visible:ring-blue-500/50"
               />
@@ -114,7 +117,7 @@ export default function NewClientPage() {
             <div className="flex items-center gap-3 py-1">
               <div className="h-px flex-1 bg-blue-500/20" />
               <span className="text-xs font-medium uppercase tracking-widest text-blue-300">
-                Vehicle Details
+                {t("Vehicle Details")}
               </span>
               <div className="h-px flex-1 bg-blue-500/20" />
             </div>
@@ -122,13 +125,13 @@ export default function NewClientPage() {
             {/* Plate Number */}
             <div className="flex flex-col gap-2">
               <Label htmlFor="plate" className="text-sm font-medium text-blue-100">
-                Plate Number
+                {t("Plate Number")}
               </Label>
               <Input
                 id="plate"
                 value={plateNumber}
                 onChange={(e) => setPlateNumber(e.target.value)}
-                placeholder="Enter plate number"
+                placeholder={t("Enter plate number")}
                 required
                 className="border-blue-500/25 bg-[#060d1d]/80 text-slate-100 placeholder:text-slate-500 focus-visible:ring-blue-500/50"
               />
@@ -137,13 +140,13 @@ export default function NewClientPage() {
             {/* Make */}
             <div className="flex flex-col gap-2">
               <Label htmlFor="make" className="text-sm font-medium text-blue-100">
-                Make
+                {t("Make")}
               </Label>
               <Input
                 id="make"
                 value={make}
                 onChange={(e) => setMake(e.target.value)}
-                placeholder="e.g. Toyota"
+                placeholder={t("e.g. Toyota")}
                 required
                 className="border-blue-500/25 bg-[#060d1d]/80 text-slate-100 placeholder:text-slate-500 focus-visible:ring-blue-500/50"
               />
@@ -152,13 +155,13 @@ export default function NewClientPage() {
             {/* Model */}
             <div className="flex flex-col gap-2">
               <Label htmlFor="model" className="text-sm font-medium text-blue-100">
-                Model
+                {t("Model")}
               </Label>
               <Input
                 id="model"
                 value={model}
                 onChange={(e) => setModel(e.target.value)}
-                placeholder="e.g. Corolla"
+                placeholder={t("e.g. Corolla")}
                 required
                 className="border-blue-500/25 bg-[#060d1d]/80 text-slate-100 placeholder:text-slate-500 focus-visible:ring-blue-500/50"
               />
@@ -167,14 +170,14 @@ export default function NewClientPage() {
             {/* Year */}
             <div className="flex flex-col gap-2">
               <Label htmlFor="year" className="text-sm font-medium text-blue-100">
-                Year
+                {t("Year")}
               </Label>
               <Input
                 id="year"
                 type="number"
                 value={year}
                 onChange={(e) => setYear(e.target.value)}
-                placeholder="e.g. 2022"
+                placeholder={t("e.g. 2022")}
                 required
                 className="border-blue-500/25 bg-[#060d1d]/80 text-slate-100 placeholder:text-slate-500 focus-visible:ring-blue-500/50"
               />
@@ -183,7 +186,7 @@ export default function NewClientPage() {
             {/* Error Message */}
             {error && (
               <div className="rounded-lg border border-red-500/25 bg-red-500/10 px-4 py-3">
-                <p className="text-sm text-red-300">{error}</p>
+                <p className="text-sm text-red-300">{t(error)}</p>
               </div>
             )}
 
@@ -193,7 +196,7 @@ export default function NewClientPage() {
               disabled={loading}
               className="mt-1 w-full border border-blue-400/30 bg-gradient-to-r from-blue-600 to-blue-500 font-semibold text-white shadow-lg shadow-blue-950/30 transition-all hover:from-blue-500 hover:to-blue-400 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {loading ? "Saving..." : "Add Client"}
+              {loading ? t("Saving...") : t("Add Client")}
             </Button>
           </form>
 
@@ -201,7 +204,7 @@ export default function NewClientPage() {
           <div className="my-6 flex items-center gap-3">
             <div className="h-px flex-1 bg-blue-500/20" />
             <span className="text-xs font-medium uppercase tracking-widest text-slate-500">
-              Existing Client
+              {t("Existing Client")}
             </span>
             <div className="h-px flex-1 bg-blue-500/20" />
           </div>
@@ -211,14 +214,14 @@ export default function NewClientPage() {
               htmlFor="existingClientId"
               className="text-sm font-medium text-blue-100"
             >
-              Existing Client ID
+              {t("Existing Client ID")}
             </Label>
 
-            <Input
+            <NumericInput
               id="existingClientId"
-              placeholder="Enter client ID"
+              placeholder={t("Enter client ID")}
               value={existingClientId}
-              onChange={(e) => setExistingClientId(e.target.value)}
+              onValueChange={setExistingClientId}
               className="border-blue-500/25 bg-[#060d1d]/80 text-slate-100 placeholder:text-slate-500 focus-visible:ring-blue-500/50"
             />
 
@@ -231,7 +234,7 @@ export default function NewClientPage() {
               disabled={!existingClientId}
               className="w-full border-blue-400/30 bg-blue-500/10 text-blue-200 transition-all hover:border-blue-300/60 hover:bg-blue-500/20 hover:text-white disabled:opacity-40"
             >
-              Add Vehicle to Client
+              {t("Add Vehicle to Client")}
             </Button>
           </div>
         </CardContent>

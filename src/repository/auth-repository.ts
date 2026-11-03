@@ -6,4 +6,17 @@ export class authRepository {
       where: { email },
     });
   }
+
+  static async findById(user_id: number) {
+    return prisma.users.findUnique({
+      where: { user_id },
+    });
+  }
+
+  static async updatePassword(user_id: number, password_hash: string) {
+    return prisma.users.update({
+      where: { user_id },
+      data: { password_hash },
+    });
+  }
 }

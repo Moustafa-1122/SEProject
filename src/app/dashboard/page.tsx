@@ -16,18 +16,27 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
-;
 import {
   ArrowRight,
+  CheckCircle2,
+  ClipboardList,
+  Clock,
   LayoutDashboard,
   LogOut,
   Menu,
   Plus,
+  UserCheck,
   UserPlus,
   Users,
   Wrench,
   X,
 } from "lucide-react";
+import { format } from "date-fns";
+import { isPositiveInteger, NumericInput } from "@/components/ui/numeric-input";
+import { useLanguage } from "@/components/language-provider";
+import { LanguageToggle } from "@/components/language-toggle";
+import { ThemeToggle } from "@/components/theme-toggle";
+import type { LucideIcon } from "lucide-react";
 
 type Reminder = {
   id: number;
@@ -42,19 +51,130 @@ type Reminder = {
   contacted_date: string | null;
 };
 
-const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/clients", label: "Show All Clients", icon: Users },
-  { href: "/clients/new", label: "Add Client", icon: UserPlus },
-  { href: "/service-types", label: "Show All Service Types", icon: Wrench },
-  { href: "/service-types/new", label: "Add Service Type", icon: Plus },
-];
+
+
+type Comparison = {
+  this_month: number;
+  last_month: number;
+  change_percent: number | null;
+};
+
+type Stats = {
+  active_clients: { total: number; new_this_month: number };
+  service_records: Comparison;
+  clients_visited: Comparison;
+  new_clients: Comparison;
+  overdue: { total: number };// Add overdue property to Stats type
+};
+
+type ReminderStatus = "contacted" | "overdue" | "pending";
+
+function getStatus(dueDate: string, contactedDate: string | null): ReminderStatus {
+  if (contactedDate) return "contacted";
+
+  // بنقارن كنص yyyy-mm-dd (UTC) حتى ما يصير فرق يوم
+  // وما منستعمل new Date() بوقت الـ render، بس لما الصفوف ترسم بعد وصول البيانات
+  const today = new Date().toISOString().slice(0, 10);
+  return dueDate.slice(0, 10) < today ? "overdue" : "pending";
+}
+
+const STATUS_STYLES: Record<ReminderStatus, { label: string; className: string }> = {
+  contacted: { label: "Contacted", className: "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" },
+  overdue: { label: "Overdue", className: "border-red-500/30 bg-red-500/10 text-red-300" },
+  pending: { label: "Pending", className: "border-amber-500/30 bg-amber-500/10 text-amber-300" },
+};
+
+function StatusBadge({ status }: { status: ReminderStatus }) {
+  const s = STATUS_STYLES[status];
+  return (
+    <span className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-medium ${s.className}`}>
+      {s.label}
+    </span>
+  );
+}
+
+function ChangeBadge({ percent }: { percent: number | null }) {
+  if (percent === null) {
+    return <span className="text-[11px] text-slate-500">No prior data</span>;
+  }
+  const isUp = percent > 0;
+  const isDown = percent < 0;
+
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <span
+        className={`rounded border px-1 py-px text-[11px] font-medium ${isUp
+          ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+          : isDown
+            ? "border-red-500/30 bg-red-500/10 text-red-300"
+            : "border-slate-500/30 bg-slate-500/10 text-slate-300"
+          }`}
+      >
+        {isUp ? "+" : ""}
+        {percent}%
+      </span>
+      <span className="truncate text-[11px] text-slate-500">vs last month</span>
+    </div>
+  );
+}
+
+function StatCard({
+  title, icon: Icon, value, loading, footer, valueClassName = "text-white",
+}: {
+  title: string;
+  icon: LucideIcon;
+  value: string | number;
+  loading: boolean;
+  footer: React.ReactNode;
+  valueClassName?: string;
+}) {
+  return (
+    <div className="rounded-xl border border-blue-500/30 bg-gradient-to-br from-[#0b1733] via-[#0b1530] to-[#080f20] px-4 py-3 shadow-[0_8px_30px_rgba(0,0,0,0.25)]">
+      <div className="flex items-center justify-between gap-2">
+        <p className="truncate text-xs font-medium text-slate-300">{title}</p>
+        <Icon size={15} className="shrink-0 text-blue-300" />
+      </div>
+
+      <div className="mt-1.5">
+        {loading ? (
+          <div className="h-7 w-14 animate-pulse rounded bg-blue-500/10" />
+        ) : (
+          <p className={`text-2xl font-bold tracking-tight ${valueClassName}`}>{value}</p>
+        )}
+      </div>
+
+      <div className="mt-1.5 min-h-4">
+        {loading ? (
+          <div className="h-3 w-24 animate-pulse rounded bg-blue-500/10" />
+        ) : (
+          footer
+        )}
+      </div>
+    </div>
+  );
+}
+
 
 export default function DashboardPage() {
   const router = useRouter();
   const pathname = usePathname();
+  const { language, t } = useLanguage();
+
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [statsLoading, setStatsLoading] = useState(true);
+
+  const navItems = [
+    { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/clients", label: "Show All Clients", icon: Users },
+    { href: "/clients/new", label: "Add Client", icon: UserPlus },
+    { href: "/service-types", label: "Show All Service Types", icon: Wrench },
+    { href: "/service-types/new", label: "Add Service Type", icon: Plus },
+  ];
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);//for error handling
+  const [reloadKey, setReloadKey] = useState(0);//for refreshing the page
   const [vehicleIdForRecord, setVehicleIdForRecord] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
@@ -63,21 +183,46 @@ export default function DashboardPage() {
   const [editMobile, setEditMobile] = useState("");
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<"all" | ReminderStatus>("all");//for filtering reminders by status
 
   useEffect(() => {
     async function fetchReminders() {
-      const res = await fetch("/api/dashboard");
-      const data = await res.json();
-      setReminders(data);
-      setLoading(false);
+      setLoading(true);
+      setLoadError(false);
+      try {
+        const res = await fetch("/api/dashboard");
+        if (!res.ok) throw new Error("Failed to load reminders");
+        const data = await res.json();
+        setReminders(data);
+      } catch (error) {
+        setLoadError(true);
+      } finally {
+        setLoading(false);
+      }
     }
     fetchReminders();
+  }, [reloadKey]);
+
+  useEffect(() => {
+    async function fetchStats() {
+      try {
+        const res = await fetch("/api/dashboard/stats");
+        if (!res.ok) throw new Error("Failed to load stats");
+        setStats(await res.json());
+      } catch (error) {
+        setStats(null); // الكروت بتعرض "—"
+      } finally {
+        setStatsLoading(false);
+      }
+    }
+    fetchStats();
   }, []);
+
 
   async function handleMarkContacted(id: number) {
     const res = await fetch(`/api/reminders/${id}/contacted`, { method: "PATCH" });
     if (!res.ok) {
-      alert("Failed to mark as contacted");
+      alert(t("Failed to mark as contacted"));
       return;
     }
     setReminders((prev) =>
@@ -91,10 +236,10 @@ export default function DashboardPage() {
     const res = await fetch(`/api/reminders/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ due_date: date.toISOString().split("T")[0] }),
+      body: JSON.stringify({ due_date: format(date, "yyyy-MM-dd") }),//format date to yyyy-MM-dd 
     });
     if (!res.ok) {
-      alert("Failed to postpone reminder");
+      alert(t("Failed to postpone reminder"));
       return;
     }
     const updated = await res.json();
@@ -106,7 +251,7 @@ export default function DashboardPage() {
   async function handleWhatsApp(id: number) {
     const res = await fetch(`/api/reminders/${id}/whatsapp-link`);
     if (!res.ok) {
-      alert("Failed to generate WhatsApp link");
+      alert(t("Failed to generate WhatsApp link"));
       return;
     }
     const data = await res.json();
@@ -135,7 +280,7 @@ export default function DashboardPage() {
       setEditLoading(false);
 
       if (!res.ok) {
-        setEditError(data.error);
+        setEditError(t(data.error));
         return;
       }
 
@@ -148,7 +293,7 @@ export default function DashboardPage() {
       );
       setEditingReminderId(null);
     } catch (error) {
-      setEditError("Failed to update client");
+      setEditError(t("Failed to update client"));
       setEditLoading(false);
     }
   }
@@ -158,15 +303,25 @@ export default function DashboardPage() {
     router.push("/login");
   }
 
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[#060b16]">
-        <p className="text-slate-300">Loading...</p>
-      </div>
-    );
+  const pendingCount = reminders.filter((r) => !r.contacted_date).length;
+
+
+  const counts = { all: reminders.length, pending: 0, overdue: 0, contacted: 0 };
+  for (const r of reminders) {
+    counts[getStatus(r.due_date, r.contacted_date)]++;
   }
 
-  const pendingCount = reminders.filter((r) => !r.contacted_date).length;
+  const visibleReminders =// filter reminders based on status filter
+    statusFilter === "all"
+      ? reminders
+      : reminders.filter(
+        (r) => getStatus(r.due_date, r.contacted_date) === statusFilter
+      );
+
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const isValidVehicleId = Number(vehicleIdForRecord) > 0;
 
   return (
     <div className="flex min-h-screen bg-[#060b16] text-slate-100">
@@ -178,11 +333,10 @@ export default function DashboardPage() {
         />
       )}
 
-      {/* ===== Sidebar (toolbar 3a chmel, openable/closable) ===== */}
+      {/* ===== Sidebar (toolbar, openable/closable, mirrors for RTL) ===== */}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-blue-500/20 bg-gradient-to-b from-[#0b1733] via-[#080f20] to-[#060b16] transition-transform duration-300 ease-in-out ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
+        className={`fixed inset-y-0 start-0 z-40 flex w-64 flex-col border-e border-blue-500/20 bg-gradient-to-b from-[#0b1733] via-[#080f20] to-[#060b16] transition-transform duration-300 ease-in-out         ${sidebarOpen ? "translate-x-0" : language === "ar" ? "translate-x-full" : "-translate-x-full"
+          }`}
       >
         {/* Logo / Brand */}
         <div className="flex h-16 items-center justify-between gap-2 border-b border-blue-500/20 px-5">
@@ -191,7 +345,7 @@ export default function DashboardPage() {
               <Wrench size={18} className="text-white" />
             </div>
             <span className="bg-gradient-to-r from-white via-blue-200 to-blue-500 bg-clip-text text-base font-bold tracking-tight text-transparent">
-              Service Reminder
+              {t("Service Reminder")}
             </span>
           </div>
 
@@ -207,26 +361,27 @@ export default function DashboardPage() {
         {/* Nav links */}
         <nav className="flex-1 space-y-1 px-3 py-5">
           <p className="px-3 pb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
-            Menu
+            {t("Menu")}
           </p>
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href;
+
+
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
-                  isActive
-                    ? "border border-blue-500/50 bg-gradient-to-r from-[#102957] to-[#0b1733] text-white shadow-[0_0_15px_rgba(37,99,235,0.15)]"
-                    : "border border-transparent text-slate-300 hover:border-blue-500/30 hover:bg-blue-500/5 hover:text-white"
-                }`}
+                className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 ${isActive
+                  ? "border border-blue-500/50 bg-gradient-to-r from-[#102957] to-[#0b1733] text-white shadow-[0_0_15px_rgba(37,99,235,0.15)]"
+                  : "border border-transparent text-slate-300 hover:border-blue-500/30 hover:bg-blue-500/5 hover:text-white"
+                  }`}
               >
                 <Icon
                   size={17}
                   className={isActive ? "text-blue-300" : "text-blue-400"}
                 />
-                {item.label}
+                {t(item.label)}
               </Link>
             );
           })}
@@ -234,51 +389,47 @@ export default function DashboardPage() {
           {/* Quick Action: Add Record */}
           <div className="mt-6 space-y-2 rounded-xl border border-blue-500/20 bg-[#0b1530]/60 p-3">
             <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Quick Add Record
+              {t("Quick Add Record")}
             </p>
-            <Input
-              placeholder="Vehicle ID"
+            <NumericInput
+              placeholder={t("Vehicle ID")}
               value={vehicleIdForRecord}
-              onChange={(e) => setVehicleIdForRecord(e.target.value)}
+              onValueChange={setVehicleIdForRecord}
               className="h-9 rounded-lg border-blue-500/40 bg-[#080f20] text-sm text-white placeholder:text-slate-500 focus-visible:ring-blue-500/40"
             />
             <Button
               variant="outline"
-              disabled={!vehicleIdForRecord}
+              disabled={!isPositiveInteger(vehicleIdForRecord)}
               onClick={() =>
-                router.push(`/vehicles/${vehicleIdForRecord}/service-records/new`)
+                router.push(`/vehicles/${Number(vehicleIdForRecord)}/service-records/new`)
               }
               className="h-9 w-full gap-2 rounded-lg border-blue-500/50 bg-gradient-to-r from-[#0b1733] to-[#080f20] text-sm text-white transition-all hover:border-blue-400 hover:bg-blue-950 disabled:opacity-40"
             >
               <Plus size={15} className="text-blue-400" />
-              Add Record
+              {t("Add Record")}
             </Button>
           </div>
         </nav>
 
         {/* Logout pinned at bottom */}
-       
-{/* Theme Toggle + Logout pinned at bottom */}
-<div className="space-y-3 border-t border-blue-500/20 p-3">
-  
-
-  <Button
-    variant="outline"
-    onClick={handleLogout}
-    className="flex w-full items-center justify-center gap-2 rounded-lg border border-red-500/30 bg-gradient-to-r from-[#25101a] to-[#160c18] px-4 py-2 text-sm font-medium text-red-400 shadow-[0_0_20px_rgba(239,68,68,0.06)] transition-all duration-200 hover:border-red-400/60 hover:bg-red-500/10 hover:text-red-300"
-  >
-    <LogOut size={16} />
-    Logout
-  </Button>
-</div>
-
+        <div className="border-t border-blue-500/20 p-3">
+          <LanguageToggle placement="sidebar" />
+          <ThemeToggle placement="sidebar" />
+          <Button
+            variant="outline"
+            onClick={handleLogout}
+            className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg border border-red-500/30 bg-gradient-to-r from-[#25101a] to-[#160c18] px-4 py-2 text-sm font-medium text-red-400 shadow-[0_0_20px_rgba(239,68,68,0.06)] transition-all duration-200 hover:border-red-400/60 hover:bg-red-500/10 hover:text-red-300"
+          >
+            <LogOut size={16} />
+            {t("Logout")}
+          </Button>
+        </div>
       </aside>
 
       {/* ===== Main content ===== */}
       <div
-        className={`flex-1 transition-[margin] duration-300 ease-in-out ${
-          sidebarOpen ? "lg:ml-64" : "lg:ml-0"
-        }`}
+        className={`flex-1 transition-[margin] duration-300 ease-in-out ${sidebarOpen ? "lg:ms-64" : "lg:ms-0"
+          }`}
       >
         <div className="p-4 sm:p-6 lg:p-8">
           {/* Page header */}
@@ -296,11 +447,20 @@ export default function DashboardPage() {
 
               <div>
                 <h1 className="bg-gradient-to-r from-white via-blue-200 to-blue-500 bg-clip-text text-3xl font-extrabold tracking-tight text-transparent">
-                  Dashboard
+                  {t("Dashboard")}
                 </h1>
-                <p className="mt-1 text-sm text-slate-400">
-                  {pendingCount} reminder{pendingCount === 1 ? "" : "s"} pending contact
-                </p>
+                {loading ? (
+                  <div className="mt-2 h-4 w-48 animate-pulse rounded bg-blue-500/10" />
+                ) : (
+                  !loadError && (
+                    <p className="mt-1 text-sm text-slate-400">
+                      {pendingCount}{" "}
+                      {pendingCount === 1
+                        ? t("reminder pending contact")
+                        : t("reminders pending contact")}
+                    </p>
+                  )
+                )}
               </div>
             </div>
 
@@ -309,16 +469,136 @@ export default function DashboardPage() {
               className="group inline-flex h-10 items-center gap-2 whitespace-nowrap rounded-xl border border-blue-500/50 bg-gradient-to-r from-[#0b1733] to-[#080f20] px-3 text-sm font-medium text-white shadow-sm transition-all duration-200 hover:border-blue-400 hover:shadow-[0_0_15px_rgba(37,99,235,0.2)]"
             >
               <Users size={17} className="text-blue-400" />
-              Show All Clients
+              {t("Show All Clients")}
               <ArrowRight
                 size={15}
                 className="text-blue-400 transition-transform group-hover:translate-x-1"
               />
             </Link>
-
-              
-
           </div>
+
+
+          {/* Stats cards */}
+          <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4 lg:grid-cols-5">
+            <StatCard
+              title={t("Overdue")}
+              icon={Clock}
+              loading={statsLoading}
+              value={stats ? stats.overdue.total : "—"}
+              valueClassName={stats && stats.overdue.total > 0 ? "text-red-300" : "text-white"}
+              footer={
+                stats ? (
+                  <span className={`text-[11px] ${stats.overdue.total > 0 ? "text-red-300/80" : "text-emerald-300"}`}>
+                    {stats.overdue.total > 0 ? "Not contacted yet" : "All caught up"}
+                  </span>
+                ) : (
+                  <span className="text-xs text-red-300">Couldn&apos;t load</span>
+                )
+              }
+            />
+
+
+            <StatCard
+              title={t("Active clients")}
+              icon={Users}
+              value={stats ? stats.active_clients.total : "—"}
+              loading={statsLoading}
+              footer={
+                <span className="text-[11px] text-slate-500">
+                  +{stats?.active_clients.new_this_month ?? 0} new this month
+                </span>
+              }
+            />
+
+
+            <StatCard
+              title={t("Services this month")}
+              icon={ClipboardList}
+              loading={statsLoading}
+              value={stats ? stats.service_records.this_month : "—"}
+              footer={
+                stats ? (
+                  <ChangeBadge percent={stats.service_records.change_percent} />
+                ) : (
+                  <span className="text-xs text-red-300">Couldn&apos;t load</span>
+                )
+              }
+            />
+
+            <StatCard
+              title={t("Clients visited this month")}
+              icon={UserCheck}
+              loading={statsLoading}
+              value={stats ? stats.clients_visited.this_month : "—"}
+              footer={
+                stats ? (
+                  <ChangeBadge percent={stats.clients_visited.change_percent} />
+                ) : (
+                  <span className="text-xs text-red-300">Couldn&apos;t load</span>
+                )
+              }
+            />
+
+            <StatCard
+              title={t("New clients this month")}
+              icon={UserPlus}
+              loading={statsLoading}
+              value={stats ? stats.new_clients.this_month : "—"}
+              footer={
+                stats ? (
+                  <ChangeBadge percent={stats.new_clients.change_percent} />
+                ) : (
+                  <span className="text-xs text-red-300">Couldn&apos;t load</span>
+                )
+              }
+            />
+          </div>
+
+          {/* Status filter */}
+          {!loading && !loadError && reminders.length > 0 && (
+            <div className="mb-4 flex flex-wrap gap-2">
+              {(
+                [
+                  { key: "all", label: t("All") },
+                  { key: "pending", label: t("Pending") },
+                  { key: "overdue", label: t("Overdue") },
+                  { key: "contacted", label: t("Contacted") },
+                ] as const
+              ).map((tab) => {
+                const active = statusFilter === tab.key;
+                return (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    onClick={() => setStatusFilter(tab.key)}
+                    className={`inline-flex h-9 items-center gap-2 rounded-xl border px-3 text-sm font-medium transition-all ${active
+                      ? "border-blue-400 bg-blue-500/20 text-white shadow-[0_0_15px_rgba(37,99,235,0.2)]"
+                      : "border-blue-500/30 bg-[#0b1733] text-slate-300 hover:border-blue-400/60 hover:text-white"
+                      }`}
+                  >
+                    {tab.label}
+                    <span
+                      className={`rounded-md px-1.5 text-xs ${active ? "bg-blue-400/30 text-white" : "bg-blue-500/10 text-blue-300"
+                        }`}
+                    >
+                      {counts[tab.key]}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>   
+
+        {/* Status filter */}
+        {!loading && !loadError && reminders.length > 0 && (
+          <div className="mb-4 flex flex-wrap gap-2">
+          </div>
+        )}
+
+        {/* Reminders Table */}
+        <div className="overflow-hidden rounded-2xl ...">
+
 
           {/* Reminders Table */}
           <div className="overflow-hidden rounded-2xl border border-blue-500/30 bg-gradient-to-br from-[#0b1733] via-[#0b1530] to-[#080f20] shadow-[0_8px_30px_rgba(0,0,0,0.25)]">
@@ -326,19 +606,92 @@ export default function DashboardPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="border-b border-blue-500/30 bg-[#080f20] hover:bg-[#080f20]">
-                    <TableHead className="whitespace-nowrap px-4 py-4 font-semibold text-blue-300">Client</TableHead>
-                    <TableHead className="whitespace-nowrap px-4 py-4 font-semibold text-blue-300">Mobile</TableHead>
-                    <TableHead className="whitespace-nowrap px-4 py-4 font-semibold text-blue-300">Vehicle</TableHead>
-                    <TableHead className="whitespace-nowrap px-4 py-4 font-semibold text-blue-300">Plate</TableHead>
-                    <TableHead className="whitespace-nowrap px-4 py-4 font-semibold text-blue-300">Service</TableHead>
-                    <TableHead className="whitespace-nowrap px-4 py-4 font-semibold text-blue-300">Due Date</TableHead>
-                    <TableHead className="whitespace-nowrap px-4 py-4 font-semibold text-blue-300">Status</TableHead>
-                    <TableHead className="whitespace-nowrap px-4 py-4 font-semibold text-blue-300">Actions</TableHead>
+                    <TableHead className="whitespace-nowrap px-4 py-4 font-semibold text-blue-300">{t("Client")}</TableHead>
+                    <TableHead className="whitespace-nowrap px-4 py-4 font-semibold text-blue-300">{t("Mobile")}</TableHead>
+                    <TableHead className="whitespace-nowrap px-4 py-4 font-semibold text-blue-300">{t("Vehicle")}</TableHead>
+                    <TableHead className="whitespace-nowrap px-4 py-4 font-semibold text-blue-300">{t("Plate")}</TableHead>
+                    <TableHead className="whitespace-nowrap px-4 py-4 font-semibold text-blue-300">{t("Service")}</TableHead>
+                    <TableHead className="whitespace-nowrap px-4 py-4 font-semibold text-blue-300">{t("Due Date")}</TableHead>
+                    <TableHead className="whitespace-nowrap px-4 py-4 font-semibold text-blue-300">{t("Status")}</TableHead>
+                    <TableHead className="whitespace-nowrap px-4 py-4 font-semibold text-blue-300">{t("Actions")}</TableHead>
                   </TableRow>
                 </TableHeader>
 
                 <TableBody>
-                  {reminders.map((r) => {
+                  {/* Loading skeleton */}
+                  {loading &&
+                    Array.from({ length: 5 }).map((_, i) => (
+                      <TableRow
+                        key={`skeleton-${i}`}
+                        className="border-b border-blue-500/15 hover:bg-transparent"
+                      >
+                        {Array.from({ length: 8 }).map((_, j) => (
+                          <TableCell key={j} className="px-4 py-4">
+                            <div
+                              className="h-4 animate-pulse rounded bg-blue-500/10"
+                              style={{ width: `${55 + ((i + j) % 4) * 12}%` }}
+                            />
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))}
+
+                  {/* Error state */}
+                  {!loading && loadError && (
+                    <TableRow className="border-0 hover:bg-transparent">
+                      <TableCell colSpan={8} className="px-4 py-16 text-center">
+                        <p className="text-sm font-medium text-red-300">
+                          {t("Couldn't load reminders")}
+                        </p>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setReloadKey((k) => k + 1)}
+                          className="mt-4 h-8 rounded-lg border-blue-500/40 bg-[#0b1733] px-3 text-xs text-blue-100 hover:bg-blue-950 hover:text-white"
+                        >
+                          {t("Try again")}
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  )}
+
+                  {/* Empty state */}
+                  {!loading && !loadError && reminders.length === 0 && (
+                    <TableRow className="border-0 hover:bg-transparent">
+                      <TableCell colSpan={8} className="px-4 py-16 text-center">
+                        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-blue-400/20 bg-blue-500/10">
+                          <CheckCircle2 size={24} className="text-blue-300" />
+                        </div>
+                        <p className="text-sm font-medium text-slate-200">
+                          {t("No reminders right now")}
+                        </p>
+                        <p className="mx-auto mt-1 max-w-sm text-xs text-slate-500">
+                          {t("You're all caught up. Reminders appear here when a service is due within 7 days.")}
+                        </p>
+                      </TableCell>
+                    </TableRow>
+                  )}
+
+
+                  {/* No results for the selected filter */}
+                  {!loading && !loadError && reminders.length > 0 && visibleReminders.length === 0 && (
+                    <TableRow className="border-0 hover:bg-transparent">
+                      <TableCell colSpan={8} className="px-4 py-12 text-center">
+                        <p className="text-sm font-medium text-slate-200">
+                          No {statusFilter} reminders
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setStatusFilter("all")}
+                          className="mt-2 text-xs text-blue-400 hover:text-blue-300 hover:underline"
+                        >
+                          Show all
+                        </button>
+                      </TableCell>
+                    </TableRow>
+                  )}
+
+                  {!loading && !loadError &&  visibleReminders.map((r) => {
                     const isEditingRow = editingReminderId === r.id;
 
                     return (
@@ -387,22 +740,14 @@ export default function DashboardPage() {
                         </TableCell>
 
                         <TableCell className="whitespace-nowrap px-4 py-3">
-                          {r.contacted_date ? (
-                            <Badge className="border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/10">
-                              Contacted
-                            </Badge>
-                          ) : (
-                            <Badge className="border border-amber-500/30 bg-amber-500/10 text-amber-300 hover:bg-amber-500/10">
-                              Pending
-                            </Badge>
-                          )}
+                          <StatusBadge status={getStatus(r.due_date, r.contacted_date)} />
                         </TableCell>
 
                         <TableCell className="px-4 py-3">
                           {isEditingRow ? (
                             <div className="flex min-w-40 flex-col gap-2">
                               {editError && (
-                                <p className="text-xs text-red-400">{editError}</p>
+                                <p className="text-xs text-red-400">{t(editError)}</p>
                               )}
 
                               <div className="flex flex-wrap gap-2">
@@ -412,7 +757,7 @@ export default function DashboardPage() {
                                   disabled={editLoading}
                                   className="h-8 rounded-lg border border-blue-500/50 bg-blue-600 px-3 text-white hover:bg-blue-500"
                                 >
-                                  {editLoading ? "Saving..." : "Save"}
+                                  {editLoading ? t("Saving...") : t("Save")}
                                 </Button>
 
                                 <Button
@@ -421,7 +766,7 @@ export default function DashboardPage() {
                                   onClick={() => setEditingReminderId(null)}
                                   className="h-8 rounded-lg border-blue-500/40 bg-[#0b1733] px-3 text-slate-200 hover:bg-blue-950 hover:text-white"
                                 >
-                                  Cancel
+                                  {t("Cancel")}
                                 </Button>
                               </div>
                             </div>
@@ -433,18 +778,19 @@ export default function DashboardPage() {
                                   onClick={() => handleMarkContacted(r.id)}
                                   className="h-8 rounded-lg border border-blue-500/60 bg-gradient-to-r from-[#102957] to-[#080f20] px-3 text-xs text-white transition-all hover:border-blue-400 hover:shadow-[0_0_12px_rgba(37,99,235,0.2)]"
                                 >
-                                  Mark Contacted
+                                  {t("Mark Contacted")}
                                 </Button>
                               )}
 
                               <Popover>
                                 <PopoverTrigger className="inline-flex h-8 items-center justify-center rounded-lg border border-blue-500/40 bg-[#0b1733] px-3 text-xs font-medium text-blue-100 transition-all hover:border-blue-400 hover:bg-blue-950">
-                                  Postpone
+                                  {t("Postpone")}
                                 </PopoverTrigger>
 
                                 <PopoverContent className="w-auto rounded-xl border border-blue-500/30 bg-[#0b1530] p-0 text-white shadow-xl">
                                   <Calendar
                                     mode="single"
+                                    disabled={{ before: today }}
                                     onSelect={(date) => {
                                       if (date) handlePostpone(r.id, date);
                                     }}
@@ -467,7 +813,7 @@ export default function DashboardPage() {
                                 onClick={() => startEditing(r)}
                                 className="h-8 rounded-lg border border-blue-500/40 bg-[#0b1733] px-3 text-xs text-blue-100 transition-all hover:border-blue-400 hover:bg-blue-950 hover:text-white"
                               >
-                                Edit
+                                {t("Edit")}
                               </Button>
                             </div>
                           )}
