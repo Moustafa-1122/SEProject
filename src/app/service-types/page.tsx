@@ -53,7 +53,7 @@ export default function ServiceTypesPage() {
 <Button
   variant="outline"
   onClick={() => router.back()}
-  className="mb-5 inline-flex items-center gap-2 rounded-lg border border-blue-500/30 bg-gradient-to-r from-[#0b1733] to-[#080f20] px-5 py-2 text-blue-300 shadow-[0_0_20px_rgba(37,99,235,0.08)] transition-all duration-200 hover:border-blue-400/60 hover:bg-blue-500/10 hover:text-white"
+  className="mb-5 inline-flex h-11 items-center gap-2 rounded-lg border border-blue-500/30 bg-gradient-to-r from-[#0b1733] to-[#080f20] px-5 text-blue-300 shadow-[0_0_20px_rgba(37,99,235,0.08)] transition-all duration-200 hover:border-blue-400/60 hover:bg-blue-500/10 hover:text-white"
 >
   <span className="text-lg rtl:rotate-180">←</span>
   {t("Back")}
@@ -62,7 +62,7 @@ export default function ServiceTypesPage() {
   {/* Header */}
   <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
     <div>
-      <h1 className="bg-gradient-to-r from-white via-blue-100 to-blue-400 bg-clip-text text-3xl font-bold tracking-tight text-transparent">
+      <h1 className="bg-gradient-to-r from-white via-blue-100 to-blue-400 bg-clip-text text-2xl font-bold tracking-tight text-transparent sm:text-3xl">
         {t("Service Types")}
       </h1>
       <p className="mt-2 text-sm text-slate-400">
@@ -74,7 +74,7 @@ export default function ServiceTypesPage() {
       href="/service-types/new"
       className={
         buttonVariants({ size: "sm" }) +
-        " w-fit border border-blue-400/30 bg-gradient-to-r from-blue-600 to-blue-500 font-semibold text-white shadow-lg shadow-blue-950/30 transition-all hover:from-blue-500 hover:to-blue-400"
+        " h-10 w-fit border border-blue-400/30 bg-gradient-to-r from-blue-600 to-blue-500 font-semibold text-white shadow-lg shadow-blue-950/30 transition-all hover:from-blue-500 hover:to-blue-400"
       }
     >
       + {t("Add Service Type")}
@@ -92,9 +92,13 @@ export default function ServiceTypesPage() {
     <div className="rounded-2xl border border-red-500/25 bg-red-500/10 p-8 text-center">
       <p className="text-sm text-red-300">{t("Failed to load service types. Please refresh and try again.")}</p>
     </div>
+  ) : serviceTypes.length === 0 ? (
+    <div className="rounded-2xl border border-blue-500/30 bg-gradient-to-br from-[#0b1733] via-[#0b1530] to-[#080f20] p-8 text-center text-sm text-slate-400">
+      {t("No service types found. Add your first service type to get started.")}
+    </div>
   ) : (
-    <div className="overflow-hidden rounded-2xl border border-blue-500/30 bg-gradient-to-br from-[#0b1733] via-[#0b1530] to-[#080f20] shadow-[0_0_30px_rgba(37,99,235,0.08)]">
-      <div className="overflow-x-auto">
+    <>
+      <div className="hidden overflow-hidden rounded-2xl border border-blue-500/30 bg-gradient-to-br from-[#0b1733] via-[#0b1530] to-[#080f20] shadow-[0_0_30px_rgba(37,99,235,0.08)] md:block">
         <Table>
           <TableHeader>
             <TableRow className="border-b border-blue-500/20 hover:bg-transparent">
@@ -125,20 +129,26 @@ export default function ServiceTypesPage() {
               </TableRow>
             ))}
 
-            {serviceTypes.length === 0 && (
-              <TableRow className="border-0 hover:bg-transparent">
-                <TableCell
-                  colSpan={2}
-                  className="h-32 text-center text-sm text-slate-400"
-                >
-                  {t("No service types found. Add your first service type to get started.")}
-                </TableCell>
-              </TableRow>
-            )}
           </TableBody>
         </Table>
       </div>
-    </div>
+      <div className="space-y-3 md:hidden">
+        {serviceTypes.map((serviceType) => (
+          <article
+            key={`mobile-${serviceType.id}`}
+            className="min-w-0 rounded-2xl border border-blue-500/30 bg-gradient-to-br from-[#0b1733] via-[#0b1530] to-[#080f20] p-4 shadow-[0_0_30px_rgba(37,99,235,0.08)]"
+          >
+            <h2 className="break-words font-medium text-slate-100">{serviceType.name}</h2>
+            <div className="mt-3">
+              <p className="text-xs text-slate-500">{t("Interval (months)")}</p>
+              <span className="mt-1 inline-flex items-center rounded-lg border border-blue-400/20 bg-blue-500/10 px-3 py-1 text-sm font-medium text-blue-200">
+                <span dir="ltr">{serviceType.interval_month}</span>&nbsp;{t("months")}
+              </span>
+            </div>
+          </article>
+        ))}
+      </div>
+    </>
   )}
 </div>
   );

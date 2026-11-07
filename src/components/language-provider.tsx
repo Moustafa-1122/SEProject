@@ -220,6 +220,13 @@ const translations: Record<string, string> = {
   "Services this month": "الخدمات هذا الشهر",
   "Active clients": "العملاء النشطون",
   "All": "الكل",
+  "No prior data": "لا توجد بيانات سابقة",
+  "vs last month": "مقارنة بالشهر الماضي",
+  "Not contacted yet":"لم يتم التواصل بعد",
+  "All caught up":"تم التواصل مع الجميع",
+  "Couldn't load dashboard data":"تعذّر تحميل بيانات لوحة التحكم",
+  "new this month":"جديد هذا الشهر",
+  "No reminders match this filter":"لا توجد تذكيرات مطابقة لهذا الفلتر",
 
 };
 

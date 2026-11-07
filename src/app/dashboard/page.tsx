@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import {
   Table,
   TableBody,
@@ -9,8 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -51,8 +50,6 @@ type Reminder = {
   contacted_date: string | null;
 };
 
-
-
 type Comparison = {
   this_month: number;
   last_month: number;
@@ -64,17 +61,26 @@ type Stats = {
   service_records: Comparison;
   clients_visited: Comparison;
   new_clients: Comparison;
-  overdue: { total: number };// Add overdue property to Stats type
+  overdue: { total: number };
 };
 
 type ReminderStatus = "contacted" | "overdue" | "pending";
 
-function getStatus(dueDate: string, contactedDate: string | null): ReminderStatus {
-  if (contactedDate) return "contacted";
+// Must live OUTSIDE the component: Next.js Cache Components rejects new Date() during render.
+// Only call it from event handlers / rows that render after data has loaded.
+function startOfToday() {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
 
-  // بنقارن كنص yyyy-mm-dd (UTC) حتى ما يصير فرق يوم
-  // وما منستعمل new Date() بوقت الـ render، بس لما الصفوف ترسم بعد وصول البيانات
-  const today = new Date().toISOString().slice(0, 10);
+function getStatus(
+  dueDate: string,
+  contactedDate: string | null,
+  today: string | null
+): ReminderStatus {
+  if (contactedDate) return "contacted";
+  if (!today) return "pending";
   return dueDate.slice(0, 10) < today ? "overdue" : "pending";
 }
 
@@ -85,25 +91,28 @@ const STATUS_STYLES: Record<ReminderStatus, { label: string; className: string }
 };
 
 function StatusBadge({ status }: { status: ReminderStatus }) {
+  const { t } = useLanguage();
   const s = STATUS_STYLES[status];
   return (
     <span className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-medium ${s.className}`}>
-      {s.label}
+      {t(s.label)}
     </span>
   );
 }
 
 function ChangeBadge({ percent }: { percent: number | null }) {
+  const { t } = useLanguage();
+
   if (percent === null) {
-    return <span className="text-[11px] text-slate-500">No prior data</span>;
+    return <span className="text-[11px] text-slate-500">{t("No prior data")}</span>;
   }
   const isUp = percent > 0;
   const isDown = percent < 0;
 
-
   return (
     <div className="flex items-center gap-1.5">
       <span
+        dir="ltr"
         className={`rounded border px-1 py-px text-[11px] font-medium ${isUp
           ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
           : isDown
@@ -114,13 +123,18 @@ function ChangeBadge({ percent }: { percent: number | null }) {
         {isUp ? "+" : ""}
         {percent}%
       </span>
-      <span className="truncate text-[11px] text-slate-500">vs last month</span>
+      <span className="truncate text-[11px] text-slate-500">{t("vs last month")}</span>
     </div>
   );
 }
 
 function StatCard({
-  title, icon: Icon, value, loading, footer, valueClassName = "text-white",
+  title,
+  icon: Icon,
+  value,
+  loading,
+  footer,
+  valueClassName = "text-white",
 }: {
   title: string;
   icon: LucideIcon;
@@ -155,8 +169,7 @@ function StatCard({
   );
 }
 
-
-export default function DashboardPage() {
+function DashboardContent() {
   const router = useRouter();
   const pathname = usePathname();
   const { language, t } = useLanguage();
@@ -171,19 +184,22 @@ export default function DashboardPage() {
     { href: "/service-types", label: "Show All Service Types", icon: Wrench },
     { href: "/service-types/new", label: "Add Service Type", icon: Plus },
   ];
+
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState(false);//for error handling
-  const [reloadKey, setReloadKey] = useState(0);//for refreshing the page
+  const [loadError, setLoadError] = useState(false); // error handling
+  const [reloadKey, setReloadKey] = useState(0); // retry
   const [vehicleIdForRecord, setVehicleIdForRecord] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [today, setToday] = useState<string | null>(null);
 
   const [editingReminderId, setEditingReminderId] = useState<number | null>(null);
   const [editName, setEditName] = useState("");
   const [editMobile, setEditMobile] = useState("");
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<"all" | ReminderStatus>("all");//for filtering reminders by status
+  const [statusFilter, setStatusFilter] = useState<"all" | ReminderStatus>("all");
 
   useEffect(() => {
     async function fetchReminders() {
@@ -193,6 +209,7 @@ export default function DashboardPage() {
         const res = await fetch("/api/dashboard");
         if (!res.ok) throw new Error("Failed to load reminders");
         const data = await res.json();
+        setToday(new Date().toISOString().slice(0, 10));
         setReminders(data);
       } catch (error) {
         setLoadError(true);
@@ -210,14 +227,13 @@ export default function DashboardPage() {
         if (!res.ok) throw new Error("Failed to load stats");
         setStats(await res.json());
       } catch (error) {
-        setStats(null); // الكروت بتعرض "—"
+        setStats(null); // cards show "—"
       } finally {
         setStatsLoading(false);
       }
     }
     fetchStats();
   }, []);
-
 
   async function handleMarkContacted(id: number) {
     const res = await fetch(`/api/reminders/${id}/contacted`, { method: "PATCH" });
@@ -236,7 +252,7 @@ export default function DashboardPage() {
     const res = await fetch(`/api/reminders/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ due_date: format(date, "yyyy-MM-dd") }),//format date to yyyy-MM-dd 
+      body: JSON.stringify({ due_date: format(date, "yyyy-MM-dd") }),
     });
     if (!res.ok) {
       alert(t("Failed to postpone reminder"));
@@ -303,40 +319,118 @@ export default function DashboardPage() {
     router.push("/login");
   }
 
+  // Everything not contacted yet (Pending + Overdue)
   const pendingCount = reminders.filter((r) => !r.contacted_date).length;
 
-
+  // Per-status counts for the filter tabs
   const counts = { all: reminders.length, pending: 0, overdue: 0, contacted: 0 };
   for (const r of reminders) {
-    counts[getStatus(r.due_date, r.contacted_date)]++;
+    counts[getStatus(r.due_date, r.contacted_date, today)]++;
   }
 
-  const visibleReminders =// filter reminders based on status filter
+  const visibleReminders =
     statusFilter === "all"
       ? reminders
       : reminders.filter(
-        (r) => getStatus(r.due_date, r.contacted_date) === statusFilter
+        (r) => getStatus(r.due_date, r.contacted_date, today) === statusFilter
       );
 
+  const overdueTotal = stats?.overdue?.total ?? null;
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const isValidVehicleId = Number(vehicleIdForRecord) > 0;
+  function renderReminderActions(r: Reminder) {
+    const isEditingRow = editingReminderId === r.id;
+
+    if (isEditingRow) {
+      return (
+        <div className="flex min-w-0 flex-col gap-2">
+          {editError && <p className="break-words text-xs text-red-400">{t(editError)}</p>}
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              onClick={() => handleSaveEdit(r)}
+              disabled={editLoading}
+              className="h-10 rounded-lg border border-blue-500/50 bg-blue-600 px-3 text-white hover:bg-blue-500"
+            >
+              {editLoading ? t("Saving...") : t("Save")}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setEditingReminderId(null)}
+              className="h-10 rounded-lg border-blue-500/40 bg-[#0b1733] px-3 text-slate-200 hover:bg-blue-950 hover:text-white"
+            >
+              {t("Cancel")}
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
+        {!r.contacted_date && (
+          <Button
+            size="sm"
+            onClick={() => handleMarkContacted(r.id)}
+            className="h-10 rounded-lg border border-blue-500/60 bg-gradient-to-r from-[#102957] to-[#080f20] px-3 text-xs text-white transition-all hover:border-blue-400 hover:shadow-[0_0_12px_rgba(37,99,235,0.2)]"
+          >
+            {t("Mark Contacted")}
+          </Button>
+        )}
+
+        <Popover>
+          <PopoverTrigger className="inline-flex h-10 items-center justify-center rounded-lg border border-blue-500/40 bg-[#0b1733] px-3 text-xs font-medium text-blue-100 transition-all hover:border-blue-400 hover:bg-blue-950">
+            {t("Postpone")}
+          </PopoverTrigger>
+          <PopoverContent className="mx-4 w-[min(18rem,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] rounded-xl border border-blue-500/30 bg-[#0b1530] p-0 text-white shadow-xl">
+            <Calendar
+              mode="single"
+              disabled={{ before: startOfToday() }}
+              onSelect={(date) => {
+                if (date) handlePostpone(r.id, date);
+              }}
+            />
+          </PopoverContent>
+        </Popover>
+
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => handleWhatsApp(r.id)}
+          className="h-10 rounded-lg border border-blue-500/40 bg-[#0b1733] px-3 text-xs text-blue-100 transition-all hover:border-blue-400 hover:bg-blue-950 hover:text-white"
+        >
+          WhatsApp
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => startEditing(r)}
+          className="h-10 rounded-lg border border-blue-500/40 bg-[#0b1733] px-3 text-xs text-blue-100 transition-all hover:border-blue-400 hover:bg-blue-950 hover:text-white"
+        >
+          {t("Edit")}
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-[#060b16] text-slate-100">
       {/* ===== Mobile overlay (click to close) ===== */}
-      {sidebarOpen && (
+      {mobileSidebarOpen && (
         <div
-          onClick={() => setSidebarOpen(false)}
+          onClick={() => setMobileSidebarOpen(false)}
           className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm lg:hidden"
         />
       )}
 
-      {/* ===== Sidebar (toolbar, openable/closable, mirrors for RTL) ===== */}
+      {/* ===== Sidebar (openable/closable, mirrors for RTL) ===== */}
       <aside
-        className={`fixed inset-y-0 start-0 z-40 flex w-64 flex-col border-e border-blue-500/20 bg-gradient-to-b from-[#0b1733] via-[#080f20] to-[#060b16] transition-transform duration-300 ease-in-out         ${sidebarOpen ? "translate-x-0" : language === "ar" ? "translate-x-full" : "-translate-x-full"
-          }`}
+        className={`fixed inset-y-0 start-0 z-40 flex w-64 flex-col border-e border-blue-500/20 bg-gradient-to-b from-[#0b1733] via-[#080f20] to-[#060b16] transition-transform duration-300 ease-in-out ${mobileSidebarOpen
+          ? "translate-x-0"
+          : language === "ar"
+            ? "translate-x-full"
+            : "-translate-x-full"
+          } ${sidebarOpen ? "lg:translate-x-0" : language === "ar" ? "lg:translate-x-full" : "lg:-translate-x-full"}`}
       >
         {/* Logo / Brand */}
         <div className="flex h-16 items-center justify-between gap-2 border-b border-blue-500/20 px-5">
@@ -351,15 +445,18 @@ export default function DashboardPage() {
 
           {/* Close button */}
           <button
-            onClick={() => setSidebarOpen(false)}
-            className="rounded-lg border border-blue-500/30 p-1.5 text-slate-400 transition-colors hover:border-blue-400 hover:text-white"
+            onClick={() => {
+              setMobileSidebarOpen(false);
+              if (window.innerWidth >= 1024) setSidebarOpen(false);
+            }}
+            className="rounded-lg border border-blue-500/30 p-2 text-slate-400 transition-colors hover:border-blue-400 hover:text-white"
           >
             <X size={16} />
           </button>
         </div>
 
         {/* Nav links */}
-        <nav className="flex-1 space-y-1 px-3 py-5">
+        <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-5">
           <p className="px-3 pb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
             {t("Menu")}
           </p>
@@ -367,12 +464,14 @@ export default function DashboardPage() {
             const Icon = item.icon;
             const isActive = pathname === item.href;
 
-
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 ${isActive
+                onClick={() => {
+                  setMobileSidebarOpen(false);
+                }}
+                className={`group flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 ${isActive
                   ? "border border-blue-500/50 bg-gradient-to-r from-[#102957] to-[#0b1733] text-white shadow-[0_0_15px_rgba(37,99,235,0.15)]"
                   : "border border-transparent text-slate-300 hover:border-blue-500/30 hover:bg-blue-500/5 hover:text-white"
                   }`}
@@ -400,9 +499,10 @@ export default function DashboardPage() {
             <Button
               variant="outline"
               disabled={!isPositiveInteger(vehicleIdForRecord)}
-              onClick={() =>
-                router.push(`/vehicles/${Number(vehicleIdForRecord)}/service-records/new`)
-              }
+              onClick={() => {
+                router.push(`/vehicles/${Number(vehicleIdForRecord)}/service-records/new`);
+                setMobileSidebarOpen(false);
+              }}
               className="h-9 w-full gap-2 rounded-lg border-blue-500/50 bg-gradient-to-r from-[#0b1733] to-[#080f20] text-sm text-white transition-all hover:border-blue-400 hover:bg-blue-950 disabled:opacity-40"
             >
               <Plus size={15} className="text-blue-400" />
@@ -411,7 +511,7 @@ export default function DashboardPage() {
           </div>
         </nav>
 
-        {/* Logout pinned at bottom */}
+        {/* Toggles + Logout pinned at bottom */}
         <div className="border-t border-blue-500/20 p-3">
           <LanguageToggle placement="sidebar" />
           <ThemeToggle placement="sidebar" />
@@ -428,25 +528,33 @@ export default function DashboardPage() {
 
       {/* ===== Main content ===== */}
       <div
-        className={`flex-1 transition-[margin] duration-300 ease-in-out ${sidebarOpen ? "lg:ms-64" : "lg:ms-0"
+        className={`min-w-0 flex-1 transition-[margin] duration-300 ease-in-out ${sidebarOpen ? "lg:ms-64" : "lg:ms-0"
           }`}
       >
         <div className="p-4 sm:p-6 lg:p-8">
           {/* Page header */}
-          <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+          <div className="mb-6 flex min-w-0 flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               {/* Open sidebar button (shows when sidebar is closed) */}
+              <button
+                onClick={() => setMobileSidebarOpen(true)}
+                className="flex h-10 w-10 items-center justify-center rounded-xl border border-blue-500/50 bg-gradient-to-r from-[#0b1733] to-[#080f20] text-blue-300 transition-all hover:border-blue-400 hover:shadow-[0_0_15px_rgba(37,99,235,0.2)] lg:hidden"
+                aria-label={t("Menu")}
+              >
+                <Menu size={18} />
+              </button>
               {!sidebarOpen && (
                 <button
                   onClick={() => setSidebarOpen(true)}
-                  className="flex h-10 w-10 items-center justify-center rounded-xl border border-blue-500/50 bg-gradient-to-r from-[#0b1733] to-[#080f20] text-blue-300 transition-all hover:border-blue-400 hover:shadow-[0_0_15px_rgba(37,99,235,0.2)]"
+                  className="hidden h-10 w-10 items-center justify-center rounded-xl border border-blue-500/50 bg-gradient-to-r from-[#0b1733] to-[#080f20] text-blue-300 transition-all hover:border-blue-400 hover:shadow-[0_0_15px_rgba(37,99,235,0.2)] lg:flex"
+                  aria-label={t("Menu")}
                 >
                   <Menu size={18} />
                 </button>
               )}
 
               <div>
-                <h1 className="bg-gradient-to-r from-white via-blue-200 to-blue-500 bg-clip-text text-3xl font-extrabold tracking-tight text-transparent">
+                <h1 className="bg-gradient-to-r from-white via-blue-200 to-blue-500 bg-clip-text text-2xl font-extrabold tracking-tight text-transparent sm:text-3xl">
                   {t("Dashboard")}
                 </h1>
                 {loading ? (
@@ -472,31 +580,34 @@ export default function DashboardPage() {
               {t("Show All Clients")}
               <ArrowRight
                 size={15}
-                className="text-blue-400 transition-transform group-hover:translate-x-1"
+                className="text-blue-400 transition-transform group-hover:translate-x-1 rtl:rotate-180 rtl:group-hover:-translate-x-1"
               />
             </Link>
           </div>
 
-
           {/* Stats cards */}
-          <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4 lg:grid-cols-5">
+          <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-5">
             <StatCard
               title={t("Overdue")}
               icon={Clock}
               loading={statsLoading}
-              value={stats ? stats.overdue.total : "—"}
-              valueClassName={stats && stats.overdue.total > 0 ? "text-red-300" : "text-white"}
+              value={overdueTotal ?? "—"}
+              valueClassName={
+                overdueTotal !== null && overdueTotal > 0 ? "text-red-300" : "text-white"
+              }
               footer={
-                stats ? (
-                  <span className={`text-[11px] ${stats.overdue.total > 0 ? "text-red-300/80" : "text-emerald-300"}`}>
-                    {stats.overdue.total > 0 ? "Not contacted yet" : "All caught up"}
+                overdueTotal !== null ? (
+                  <span
+                    className={`text-[11px] ${overdueTotal > 0 ? "text-red-300/80" : "text-emerald-300"
+                      }`}
+                  >
+                    {overdueTotal > 0 ? t("Not contacted yet") : t("All caught up")}
                   </span>
                 ) : (
-                  <span className="text-xs text-red-300">Couldn&apos;t load</span>
+                  <span className="text-xs text-red-300">{t("Couldn't load")}</span>
                 )
               }
             />
-
 
             <StatCard
               title={t("Active clients")}
@@ -504,12 +615,15 @@ export default function DashboardPage() {
               value={stats ? stats.active_clients.total : "—"}
               loading={statsLoading}
               footer={
-                <span className="text-[11px] text-slate-500">
-                  +{stats?.active_clients.new_this_month ?? 0} new this month
-                </span>
+                stats ? (
+                  <span className="text-[11px] text-slate-500">
+                    +{stats.active_clients.new_this_month} {t("new this month")}
+                  </span>
+                ) : (
+                  <span className="text-xs text-red-300">{t("Couldn't load")}</span>
+                )
               }
             />
-
 
             <StatCard
               title={t("Services this month")}
@@ -520,7 +634,7 @@ export default function DashboardPage() {
                 stats ? (
                   <ChangeBadge percent={stats.service_records.change_percent} />
                 ) : (
-                  <span className="text-xs text-red-300">Couldn&apos;t load</span>
+                  <span className="text-xs text-red-300">{t("Couldn't load")}</span>
                 )
               }
             />
@@ -534,7 +648,7 @@ export default function DashboardPage() {
                 stats ? (
                   <ChangeBadge percent={stats.clients_visited.change_percent} />
                 ) : (
-                  <span className="text-xs text-red-300">Couldn&apos;t load</span>
+                  <span className="text-xs text-red-300">{t("Couldn't load")}</span>
                 )
               }
             />
@@ -548,7 +662,7 @@ export default function DashboardPage() {
                 stats ? (
                   <ChangeBadge percent={stats.new_clients.change_percent} />
                 ) : (
-                  <span className="text-xs text-red-300">Couldn&apos;t load</span>
+                  <span className="text-xs text-red-300">{t("Couldn't load")}</span>
                 )
               }
             />
@@ -571,7 +685,7 @@ export default function DashboardPage() {
                     key={tab.key}
                     type="button"
                     onClick={() => setStatusFilter(tab.key)}
-                    className={`inline-flex h-9 items-center gap-2 rounded-xl border px-3 text-sm font-medium transition-all ${active
+                    className={`inline-flex h-10 items-center gap-2 rounded-xl border px-3 text-sm font-medium transition-all ${active
                       ? "border-blue-400 bg-blue-500/20 text-white shadow-[0_0_15px_rgba(37,99,235,0.2)]"
                       : "border-blue-500/30 bg-[#0b1733] text-slate-300 hover:border-blue-400/60 hover:text-white"
                       }`}
@@ -588,20 +702,9 @@ export default function DashboardPage() {
               })}
             </div>
           )}
-        </div>   
-
-        {/* Status filter */}
-        {!loading && !loadError && reminders.length > 0 && (
-          <div className="mb-4 flex flex-wrap gap-2">
-          </div>
-        )}
-
-        {/* Reminders Table */}
-        <div className="overflow-hidden rounded-2xl ...">
-
 
           {/* Reminders Table */}
-          <div className="overflow-hidden rounded-2xl border border-blue-500/30 bg-gradient-to-br from-[#0b1733] via-[#0b1530] to-[#080f20] shadow-[0_8px_30px_rgba(0,0,0,0.25)]">
+          <div className="hidden overflow-hidden rounded-2xl border border-blue-500/30 bg-gradient-to-br from-[#0b1733] via-[#0b1530] to-[#080f20] shadow-[0_8px_30px_rgba(0,0,0,0.25)] md:block">
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -672,161 +775,216 @@ export default function DashboardPage() {
                     </TableRow>
                   )}
 
-
                   {/* No results for the selected filter */}
-                  {!loading && !loadError && reminders.length > 0 && visibleReminders.length === 0 && (
-                    <TableRow className="border-0 hover:bg-transparent">
-                      <TableCell colSpan={8} className="px-4 py-12 text-center">
-                        <p className="text-sm font-medium text-slate-200">
-                          No {statusFilter} reminders
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => setStatusFilter("all")}
-                          className="mt-2 text-xs text-blue-400 hover:text-blue-300 hover:underline"
-                        >
-                          Show all
-                        </button>
-                      </TableCell>
-                    </TableRow>
-                  )}
-
-                  {!loading && !loadError &&  visibleReminders.map((r) => {
-                    const isEditingRow = editingReminderId === r.id;
-
-                    return (
-                      <TableRow
-                        key={r.id}
-                        className="border-b border-blue-500/15 transition-colors duration-200 hover:bg-blue-500/[0.07]"
-                      >
-                        <TableCell className="whitespace-nowrap px-4 py-3 font-medium text-slate-100">
-                          {isEditingRow ? (
-                            <Input
-                              value={editName}
-                              onChange={(e) => setEditName(e.target.value)}
-                              className="h-9 min-w-32 rounded-lg border-blue-500/40 bg-[#080f20] text-white focus-visible:ring-blue-500/40"
-                            />
-                          ) : (
-                            r.client_name
-                          )}
-                        </TableCell>
-
-                        <TableCell className="whitespace-nowrap px-4 py-3 text-slate-300">
-                          {isEditingRow ? (
-                            <Input
-                              value={editMobile}
-                              onChange={(e) => setEditMobile(e.target.value)}
-                              className="h-9 min-w-32 rounded-lg border-blue-500/40 bg-[#080f20] text-white focus-visible:ring-blue-500/40"
-                            />
-                          ) : (
-                            r.mobile_number
-                          )}
-                        </TableCell>
-
-                        <TableCell className="whitespace-nowrap px-4 py-3 text-slate-300">
-                          {r.make} {r.model}
-                        </TableCell>
-
-                        <TableCell className="whitespace-nowrap px-4 py-3 font-medium text-blue-300">
-                          {r.plate_number}
-                        </TableCell>
-
-                        <TableCell className="whitespace-nowrap px-4 py-3 text-slate-300">
-                          {r.service_type}
-                        </TableCell>
-
-                        <TableCell className="whitespace-nowrap px-4 py-3 text-slate-300">
-                          {r.due_date}
-                        </TableCell>
-
-                        <TableCell className="whitespace-nowrap px-4 py-3">
-                          <StatusBadge status={getStatus(r.due_date, r.contacted_date)} />
-                        </TableCell>
-
-                        <TableCell className="px-4 py-3">
-                          {isEditingRow ? (
-                            <div className="flex min-w-40 flex-col gap-2">
-                              {editError && (
-                                <p className="text-xs text-red-400">{t(editError)}</p>
-                              )}
-
-                              <div className="flex flex-wrap gap-2">
-                                <Button
-                                  size="sm"
-                                  onClick={() => handleSaveEdit(r)}
-                                  disabled={editLoading}
-                                  className="h-8 rounded-lg border border-blue-500/50 bg-blue-600 px-3 text-white hover:bg-blue-500"
-                                >
-                                  {editLoading ? t("Saving...") : t("Save")}
-                                </Button>
-
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => setEditingReminderId(null)}
-                                  className="h-8 rounded-lg border-blue-500/40 bg-[#0b1733] px-3 text-slate-200 hover:bg-blue-950 hover:text-white"
-                                >
-                                  {t("Cancel")}
-                                </Button>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="flex min-w-max flex-wrap items-center gap-2">
-                              {!r.contacted_date && (
-                                <Button
-                                  size="sm"
-                                  onClick={() => handleMarkContacted(r.id)}
-                                  className="h-8 rounded-lg border border-blue-500/60 bg-gradient-to-r from-[#102957] to-[#080f20] px-3 text-xs text-white transition-all hover:border-blue-400 hover:shadow-[0_0_12px_rgba(37,99,235,0.2)]"
-                                >
-                                  {t("Mark Contacted")}
-                                </Button>
-                              )}
-
-                              <Popover>
-                                <PopoverTrigger className="inline-flex h-8 items-center justify-center rounded-lg border border-blue-500/40 bg-[#0b1733] px-3 text-xs font-medium text-blue-100 transition-all hover:border-blue-400 hover:bg-blue-950">
-                                  {t("Postpone")}
-                                </PopoverTrigger>
-
-                                <PopoverContent className="w-auto rounded-xl border border-blue-500/30 bg-[#0b1530] p-0 text-white shadow-xl">
-                                  <Calendar
-                                    mode="single"
-                                    disabled={{ before: today }}
-                                    onSelect={(date) => {
-                                      if (date) handlePostpone(r.id, date);
-                                    }}
-                                  />
-                                </PopoverContent>
-                              </Popover>
-
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleWhatsApp(r.id)}
-                                className="h-8 rounded-lg border border-blue-500/40 bg-[#0b1733] px-3 text-xs text-blue-100 transition-all hover:border-blue-400 hover:bg-blue-950 hover:text-white"
-                              >
-                                WhatsApp
-                              </Button>
-
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => startEditing(r)}
-                                className="h-8 rounded-lg border border-blue-500/40 bg-[#0b1733] px-3 text-xs text-blue-100 transition-all hover:border-blue-400 hover:bg-blue-950 hover:text-white"
-                              >
-                                {t("Edit")}
-                              </Button>
-                            </div>
-                          )}
+                  {!loading &&
+                    !loadError &&
+                    reminders.length > 0 &&
+                    visibleReminders.length === 0 && (
+                      <TableRow className="border-0 hover:bg-transparent">
+                        <TableCell colSpan={8} className="px-4 py-12 text-center">
+                          <p className="text-sm font-medium text-slate-200">
+                            {t("No reminders match this filter")}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => setStatusFilter("all")}
+                            className="mt-2 text-xs text-blue-400 hover:text-blue-300 hover:underline"
+                          >
+                            {t("Show all")}
+                          </button>
                         </TableCell>
                       </TableRow>
-                    );
-                  })}
+                    )}
+
+                  {!loading &&
+                    !loadError &&
+                    visibleReminders.map((r) => {
+                      const isEditingRow = editingReminderId === r.id;
+
+                      return (
+                        <TableRow
+                          key={r.id}
+                          className="border-b border-blue-500/15 transition-colors duration-200 hover:bg-blue-500/[0.07]"
+                        >
+                          <TableCell className="whitespace-nowrap px-4 py-3 font-medium text-slate-100">
+                            {isEditingRow ? (
+                              <Input
+                                value={editName}
+                                onChange={(e) => setEditName(e.target.value)}
+                                className="h-9 min-w-32 rounded-lg border-blue-500/40 bg-[#080f20] text-white focus-visible:ring-blue-500/40"
+                              />
+                            ) : (
+                              r.client_name
+                            )}
+                          </TableCell>
+
+                          <TableCell className="whitespace-nowrap px-4 py-3 text-slate-300">
+                            {isEditingRow ? (
+                              <Input
+                                value={editMobile}
+                                onChange={(e) => setEditMobile(e.target.value)}
+                                className="h-9 min-w-32 rounded-lg border-blue-500/40 bg-[#080f20] text-white focus-visible:ring-blue-500/40"
+                              />
+                            ) : (
+                              <span dir="ltr">{r.mobile_number}</span>
+                            )}
+                          </TableCell>
+
+                          <TableCell className="whitespace-nowrap px-4 py-3 text-slate-300">
+                            {r.make} {r.model}
+                          </TableCell>
+
+                          <TableCell className="whitespace-nowrap px-4 py-3 font-medium text-blue-300">
+                            {r.plate_number}
+                          </TableCell>
+
+                          <TableCell className="whitespace-nowrap px-4 py-3 text-slate-300">
+                            {r.service_type}
+                          </TableCell>
+
+                          <TableCell className="whitespace-nowrap px-4 py-3 text-slate-300">
+                            {r.due_date}
+                          </TableCell>
+
+                          <TableCell className="whitespace-nowrap px-4 py-3">
+                            <StatusBadge status={getStatus(r.due_date, r.contacted_date, today)} />
+                          </TableCell>
+
+                          <TableCell className="px-4 py-3">
+                            {renderReminderActions(r)}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                 </TableBody>
               </Table>
             </div>
           </div>
+
+          <div className="space-y-3 md:hidden">
+            {loading ? (
+              Array.from({ length: 3 }).map((_, index) => (
+                <div
+                  key={`mobile-skeleton-${index}`}
+                  className="animate-pulse rounded-2xl border border-blue-500/30 bg-[#0b1530] p-4"
+                >
+                  <div className="h-4 w-2/5 rounded bg-blue-500/10" />
+                  <div className="mt-4 grid grid-cols-2 gap-3">
+                    <div className="h-4 rounded bg-blue-500/10" />
+                    <div className="h-4 rounded bg-blue-500/10" />
+                    <div className="h-4 rounded bg-blue-500/10" />
+                    <div className="h-4 rounded bg-blue-500/10" />
+                  </div>
+                </div>
+              ))
+            ) : loadError ? (
+              <div className="rounded-2xl border border-blue-500/30 bg-[#0b1530] p-6 text-center">
+                <p className="text-sm font-medium text-red-300">{t("Couldn't load reminders")}</p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setReloadKey((key) => key + 1)}
+                  className="mt-4 h-10 rounded-lg border-blue-500/40 bg-[#0b1733] px-3 text-xs text-blue-100 hover:bg-blue-950 hover:text-white"
+                >
+                  {t("Try again")}
+                </Button>
+              </div>
+            ) : reminders.length === 0 ? (
+              <div className="rounded-2xl border border-blue-500/30 bg-[#0b1530] p-6 text-center">
+                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-blue-400/20 bg-blue-500/10">
+                  <CheckCircle2 size={24} className="text-blue-300" />
+                </div>
+                <p className="text-sm font-medium text-slate-200">{t("No reminders right now")}</p>
+                <p className="mx-auto mt-1 max-w-sm text-xs text-slate-500">
+                  {t("You're all caught up. Reminders appear here when a service is due within 7 days.")}
+                </p>
+              </div>
+            ) : visibleReminders.length === 0 ? (
+              <div className="rounded-2xl border border-blue-500/30 bg-[#0b1530] p-6 text-center">
+                <p className="text-sm font-medium text-slate-200">{t("No reminders match this filter")}</p>
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter("all")}
+                  className="mt-2 text-xs text-blue-400 hover:text-blue-300 hover:underline"
+                >
+                  {t("Show all")}
+                </button>
+              </div>
+            ) : (
+              visibleReminders.map((r) => {
+                const isEditingRow = editingReminderId === r.id;
+                return (
+                  <article
+                    key={`mobile-${r.id}`}
+                    className="min-w-0 rounded-2xl border border-blue-500/30 bg-[#0b1530] p-4 shadow-[0_8px_30px_rgba(0,0,0,0.2)]"
+                  >
+                    <div className="flex min-w-0 items-start justify-between gap-3">
+                      <h2 className="min-w-0 flex-1 break-words font-semibold text-slate-100">
+                        {isEditingRow ? (
+                          <Input
+                            value={editName}
+                            onChange={(event) => setEditName(event.target.value)}
+                            className="h-10 w-full min-w-0 rounded-lg border-blue-500/40 bg-[#080f20] text-white focus-visible:ring-blue-500/40"
+                          />
+                        ) : (
+                          r.client_name
+                        )}
+                      </h2>
+                      <StatusBadge status={getStatus(r.due_date, r.contacted_date, today)} />
+                    </div>
+
+                    <div className="mt-4 grid min-w-0 grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                      <div className="min-w-0">
+                        <p className="text-xs text-slate-500">{t("Mobile")}</p>
+                        {isEditingRow ? (
+                          <Input
+                            type="tel"
+                            inputMode="tel"
+                            dir="ltr"
+                            value={editMobile}
+                            onChange={(event) => setEditMobile(event.target.value)}
+                            className="mt-1 h-10 w-full min-w-0 rounded-lg border-blue-500/40 bg-[#080f20] text-white focus-visible:ring-blue-500/40"
+                          />
+                        ) : (
+                          <p dir="ltr" className="truncate text-slate-200">{r.mobile_number}</p>
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs text-slate-500">{t("Vehicle")}</p>
+                        <p className="truncate text-slate-200">{r.make} {r.model}</p>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs text-slate-500">{t("Plate")}</p>
+                        <p dir="ltr" className="truncate font-medium text-blue-300">{r.plate_number}</p>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs text-slate-500">{t("Service")}</p>
+                        <p className="break-words text-slate-200">{r.service_type}</p>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs text-slate-500">{t("Due Date")}</p>
+                        <p dir="ltr" className="text-slate-200">{r.due_date}</p>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 border-t border-blue-500/15 pt-4">
+                      {renderReminderActions(r)}
+                    </div>
+                  </article>
+                );
+              })
+            )}
+          </div>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#060b16]" />}>
+      <DashboardContent />
+    </Suspense>
   );
 }

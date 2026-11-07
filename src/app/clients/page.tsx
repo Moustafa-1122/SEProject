@@ -82,6 +82,23 @@ export default function ClientsPage() {
   const isInitialLoad = loading && !hasLoaded;
   const isRefreshing = loading && hasLoaded;
 
+  function renderClientActions(client: Client) {
+    return (
+      <Link
+        href={`/clients/${client.id}/vehicles/new`}
+        className={
+          buttonVariants({
+            size: "sm",
+            variant: "outline",
+          }) +
+          " h-10 border-blue-400/30 bg-blue-500/10 text-blue-200 transition-all hover:border-blue-300/60 hover:bg-blue-500/20 hover:text-white"
+        }
+      >
+        + {t("Add Vehicle")}
+      </Link>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#060b16] p-4 text-slate-100 sm:p-6 lg:p-8">
       {/* Header */}
@@ -108,7 +125,7 @@ export default function ClientsPage() {
       </Link>
 
       <div className="mb-8">
-        <h1 className="bg-gradient-to-r from-white via-blue-100 to-blue-400 bg-clip-text text-3xl font-bold tracking-tight text-transparent">
+        <h1 className="bg-gradient-to-r from-white via-blue-100 to-blue-400 bg-clip-text text-2xl font-bold tracking-tight text-transparent sm:text-3xl">
           {t("Clients")}
         </h1>
         <p className="mt-2 text-sm text-slate-400">
@@ -119,15 +136,16 @@ export default function ClientsPage() {
       {/* Search */}
       <div className="mb-6">
         <Input
+          type="search"
           placeholder={t("Search by name or mobile number...")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="max-w-sm border-blue-500/30 bg-[#0b1530] text-slate-100 placeholder:text-slate-500 focus-visible:ring-blue-500/50"
+          className="h-11 w-full min-w-0 border-blue-500/30 bg-[#0b1530] text-slate-100 placeholder:text-slate-500 focus-visible:ring-blue-500/50 sm:max-w-sm"
         />
       </div>
 
       {/* Clients Table (always rendered, states live inside the body) */}
-      <div className="overflow-hidden rounded-2xl border border-blue-500/30 bg-gradient-to-br from-[#0b1733] via-[#0b1530] to-[#080f20] shadow-[0_0_30px_rgba(37,99,235,0.08)]">
+      <div className="hidden overflow-hidden rounded-2xl border border-blue-500/30 bg-gradient-to-br from-[#0b1733] via-[#0b1530] to-[#080f20] shadow-[0_0_30px_rgba(37,99,235,0.08)] md:block">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -270,7 +288,7 @@ export default function ClientsPage() {
                     </TableCell>
 
                     <TableCell className="whitespace-nowrap text-slate-300">
-                      {c.mobile_number}
+                      <span dir="ltr">{c.mobile_number}</span>
                     </TableCell>
 
                     <TableCell>
@@ -289,25 +307,114 @@ export default function ClientsPage() {
                       {c.created_at}
                     </TableCell>
 
-                    <TableCell>
-                      <a
-                        href={`/clients/${c.id}/vehicles/new`}
-                        className={
-                          buttonVariants({
-                            size: "sm",
-                            variant: "outline",
-                          }) +
-                          " whitespace-nowrap border-blue-400/30 bg-blue-500/10 text-blue-200 transition-all hover:border-blue-300/60 hover:bg-blue-500/20 hover:text-white"
-                        }
-                      >
-                        + {t("Add Vehicle")}
-                      </a>
-                    </TableCell>
+                    <TableCell>{renderClientActions(c)}</TableCell>
                   </TableRow>
                 ))}
             </TableBody>
           </Table>
         </div>
+      </div>
+
+      <div className="space-y-3 md:hidden">
+        {isInitialLoad ? (
+          Array.from({ length: 3 }).map((_, index) => (
+            <div
+              key={`mobile-skeleton-${index}`}
+              className="animate-pulse rounded-2xl border border-blue-500/30 bg-gradient-to-br from-[#0b1733] via-[#0b1530] to-[#080f20] p-4"
+            >
+              <div className="h-4 w-2/5 rounded bg-blue-500/10" />
+              <div className="mt-4 h-4 w-1/2 rounded bg-blue-500/10" />
+              <div className="mt-4 h-10 w-32 rounded bg-blue-500/10" />
+            </div>
+          ))
+        ) : loadError ? (
+          <div className="rounded-2xl border border-blue-500/30 bg-gradient-to-br from-[#0b1733] via-[#0b1530] to-[#080f20] p-6 text-center">
+            <p className="text-sm font-medium text-red-300">{t("Couldn't load clients")}</p>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setReloadKey((key) => key + 1)}
+              className="mt-4 h-10 rounded-lg border-blue-500/40 bg-[#0b1733] px-3 text-xs text-blue-100 hover:bg-blue-950 hover:text-white"
+            >
+              {t("Try again")}
+            </Button>
+          </div>
+        ) : clients.length === 0 ? (
+          <div className="rounded-2xl border border-blue-500/30 bg-gradient-to-br from-[#0b1733] via-[#0b1530] to-[#080f20] p-6 text-center">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-blue-400/20 bg-blue-500/10">
+              {debouncedSearch ? (
+                <SearchX size={24} className="text-blue-300" />
+              ) : (
+                <Users size={24} className="text-blue-300" />
+              )}
+            </div>
+            {debouncedSearch ? (
+              <>
+                <p className="break-words text-sm font-medium text-slate-200">
+                  {t("No results for")}&nbsp;&quot;{debouncedSearch}&quot;
+                </p>
+                <p className="mx-auto mt-1 max-w-sm text-xs text-slate-500">
+                  {t("Try a different name or mobile number.")}
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-sm font-medium text-slate-200">{t("No clients yet")}</p>
+                <p className="mx-auto mt-1 max-w-sm text-xs text-slate-500">
+                  {t("Add your first client to start tracking their vehicles and service reminders.")}
+                </p>
+                <Link
+                  href="/clients/new"
+                  className={
+                    buttonVariants({ size: "sm" }) +
+                    " mt-4 h-10 border border-blue-400/30 bg-gradient-to-r from-blue-600 to-blue-500 font-semibold text-white hover:from-blue-500 hover:to-blue-400"
+                  }
+                >
+                  + {t("Add Client")}
+                </Link>
+              </>
+            )}
+          </div>
+        ) : (
+          clients.map((client) => (
+            <article
+              key={`mobile-${client.id}`}
+              className={`min-w-0 rounded-2xl border border-blue-500/30 bg-gradient-to-br from-[#0b1733] via-[#0b1530] to-[#080f20] p-4 shadow-[0_0_30px_rgba(37,99,235,0.08)] transition-opacity ${
+                isRefreshing ? "opacity-50" : "opacity-100"
+              }`}
+            >
+              <div className="flex min-w-0 items-start justify-between gap-3">
+                <Link
+                  href={`/clients/${client.id}`}
+                  className="min-w-0 break-words font-medium text-blue-300 transition-colors hover:text-blue-100 hover:underline"
+                  title={t("View {name}'s details").replace("{name}", client.name)}
+                >
+                  {client.name}
+                </Link>
+                {client.is_active ? (
+                  <Badge className="shrink-0 border border-emerald-400/20 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/15">
+                    {t("Active")}
+                  </Badge>
+                ) : (
+                  <Badge className="shrink-0 border border-red-400/20 bg-red-500/10 text-red-300 hover:bg-red-500/15">
+                    {t("Inactive")}
+                  </Badge>
+                )}
+              </div>
+              <div className="mt-4 grid min-w-0 grid-cols-2 gap-3 text-sm">
+                <div className="min-w-0">
+                  <p className="text-xs text-slate-500">{t("Mobile")}</p>
+                  <p dir="ltr" className="truncate text-slate-300">{client.mobile_number}</p>
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs text-slate-500">{t("Created")}</p>
+                  <p dir="ltr" className="break-words text-slate-400">{client.created_at}</p>
+                </div>
+              </div>
+              <div className="mt-4">{renderClientActions(client)}</div>
+            </article>
+          ))
+        )}
       </div>
     </div>
   );

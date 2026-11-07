@@ -23,11 +23,12 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
+async function handleSubmit(e: React.FormEvent) {
+  e.preventDefault();
+  setError(null);
+  setLoading(true);
 
+  try {
     const res = await fetch("/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -35,30 +36,34 @@ export default function LoginPage() {
     });
 
     const data = await res.json();
-    setLoading(false);
 
     if (!res.ok) {
-      setError(t(data.error));
+      setError(t(data.error ?? "Login failed"));
       return;
     }
 
     router.push("/dashboard");
+  } catch {
+    setError(t("Network error. Please try again."));
+  } finally {
+    setLoading(false);
   }
+}
 
   return (
 
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#060b16] p-4 text-slate-100 sm:p-8">
 
       {/* Background Glow */}
-      <div className="pointer-events-none absolute -left-32 -top-32 h-96 w-96 rounded-full bg-blue-600/15 blur-[120px]" />
-      <div className="pointer-events-none absolute -bottom-32 -right-32 h-96 w-96 rounded-full bg-cyan-500/10 blur-[120px]" />
+      <div className="pointer-events-none absolute -start-32 -top-32 h-96 w-96 rounded-full bg-blue-600/15 blur-[120px]" />
+      <div className="pointer-events-none absolute -bottom-32 -end-32 h-96 w-96 rounded-full bg-cyan-500/10 blur-[120px]" />
 
-      <div className="relative grid w-full max-w-5xl overflow-hidden rounded-3xl border border-blue-500/20 bg-[#0a1224]/90 shadow-[0_0_80px_rgba(37,99,235,0.10)] md:grid-cols-2">
+      <div className="relative grid w-full min-w-0 max-w-5xl overflow-hidden rounded-3xl border border-blue-500/20 bg-[#0a1224]/90 shadow-[0_0_80px_rgba(37,99,235,0.10)] md:grid-cols-2">
 
         {/* Left Branding Section */}
-        <div className="relative hidden flex-col justify-between overflow-hidden border-r border-blue-500/15 bg-gradient-to-br from-[#0d1b3a] via-[#0b1530] to-[#080f20] p-10 md:flex lg:p-12">
+        <div className="relative hidden min-w-0 flex-col justify-between overflow-hidden border-e border-blue-500/15 bg-gradient-to-br from-[#0d1b3a] via-[#0b1530] to-[#080f20] p-10 md:flex lg:p-12">
 
-          <div className="pointer-events-none absolute -right-20 top-1/4 h-64 w-64 rounded-full bg-blue-500/10 blur-[80px]" />
+          <div className="pointer-events-none absolute -end-20 top-1/4 h-64 w-64 rounded-full bg-blue-500/10 blur-[80px]" />
 
           {/* Logo */}
           <div className="relative flex items-center gap-3">
@@ -142,7 +147,7 @@ export default function LoginPage() {
         </div>
 
         {/* Login Section */}
-        <div className="flex items-center justify-center bg-gradient-to-br from-[#0b1428]/95 to-[#080e1c]/95 p-6 sm:p-10 lg:p-12">
+        <div className="flex min-w-0 items-center justify-center bg-gradient-to-br from-[#0b1428]/95 to-[#080e1c]/95 p-4 sm:p-10 lg:p-12">
           <Card className="w-full max-w-sm border-0 bg-transparent text-slate-100 shadow-none">
 
             <CardHeader className="space-y-4 px-0 pb-7">
@@ -199,6 +204,7 @@ export default function LoginPage() {
                     <Input
                       id="email"
                       type="email"
+                      dir="ltr"
                       autoComplete="email"
                       placeholder={t("you@example.com")}
                       value={email}
@@ -255,7 +261,7 @@ export default function LoginPage() {
                     role="alert"
                     className="rounded-xl border border-red-500/25 bg-red-500/10 px-4 py-3"
                   >
-                    <p className="text-sm leading-5 text-red-300">{t(error)}</p>
+                    <p className="break-words text-sm leading-5 text-red-300">{t(error)}</p>
                   </div>
                 )}
 

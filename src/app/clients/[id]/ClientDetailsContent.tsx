@@ -79,7 +79,7 @@ export function ClientDetailsSkeleton() {
       </div>
 
       {/* Vehicles table skeleton */}
-      <div className="overflow-hidden rounded-2xl border border-blue-500/30 bg-gradient-to-br from-[#0b1733] via-[#0b1530] to-[#080f20]">
+      <div className="hidden overflow-hidden rounded-2xl border border-blue-500/30 bg-gradient-to-br from-[#0b1733] via-[#0b1530] to-[#080f20] md:block">
         <div className="border-b border-blue-500/20 p-4">
           <div className="h-4 w-1/3 animate-pulse rounded bg-blue-500/10" />
         </div>
@@ -95,6 +95,20 @@ export function ClientDetailsSkeleton() {
                 style={{ width: `${12 + ((i + j) % 3) * 6}%` }}
               />
             ))}
+          </div>
+        ))}
+      </div>
+      <div className="space-y-3 md:hidden">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div
+            key={`mobile-${i}`}
+            className="animate-pulse rounded-2xl border border-blue-500/30 bg-gradient-to-br from-[#0b1733] via-[#0b1530] to-[#080f20] p-4"
+          >
+            <div className="h-4 w-2/5 rounded bg-blue-500/10" />
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <div className="h-4 rounded bg-blue-500/10" />
+              <div className="h-4 rounded bg-blue-500/10" />
+            </div>
           </div>
         ))}
       </div>
@@ -137,6 +151,20 @@ export default function ClientDetailsContent() {
   const [showDeactivateConfirm, setShowDeactivateConfirm] = useState(false);
   const [deactivateLoading, setDeactivateLoading] = useState(false);
   const [deactivateError, setDeactivateError] = useState<string | null>(null);
+
+  function renderVehicleActions(vehicle: Vehicle) {
+    return (
+      <Link
+        href={`/vehicles/${vehicle.id}/service-records/new`}
+        className={
+          buttonVariants({ size: "sm", variant: "outline" }) +
+          " h-10 border-blue-400/30 bg-blue-500/10 text-blue-200 transition-all hover:border-blue-300/60 hover:bg-blue-500/20 hover:text-white"
+        }
+      >
+        + {t("Add Record")}
+      </Link>
+    );
+  }
 
   // Esc close deactivate confirm modal 
   useEffect(() => {
@@ -343,7 +371,7 @@ export default function ClientDetailsContent() {
             id="editName"
             value={editName}
             onChange={(e) => setEditName(e.target.value)}
-            className="border-blue-500/25 bg-[#060d1d]/80 text-slate-100 placeholder:text-slate-500 focus-visible:ring-blue-500/50"
+            className="h-11 w-full min-w-0 border-blue-500/25 bg-[#060d1d]/80 text-slate-100 placeholder:text-slate-500 focus-visible:ring-blue-500/50"
           />
         </div>
 
@@ -353,15 +381,18 @@ export default function ClientDetailsContent() {
           </Label>
           <Input
             id="editMobile"
+            type="tel"
+            inputMode="tel"
+            dir="ltr"
             value={editMobile}
             onChange={(e) => setEditMobile(e.target.value)}
-            className="border-blue-500/25 bg-[#060d1d]/80 text-slate-100 placeholder:text-slate-500 focus-visible:ring-blue-500/50"
+            className="h-11 w-full min-w-0 border-blue-500/25 bg-[#060d1d]/80 text-slate-100 placeholder:text-slate-500 focus-visible:ring-blue-500/50"
           />
         </div>
 
         {editError && (
           <div className="rounded-lg border border-red-500/25 bg-red-500/10 px-4 py-3">
-            <p className="text-sm text-red-300">{t(editError)}</p>
+            <p className="break-words text-sm text-red-300">{t(editError)}</p>
           </div>
         )}
 
@@ -370,7 +401,7 @@ export default function ClientDetailsContent() {
             size="sm"
             onClick={handleSaveEdit}
             disabled={editLoading}
-            className="border border-blue-400/30 bg-gradient-to-r from-blue-600 to-blue-500 text-white transition-all hover:from-blue-500 hover:to-blue-400 disabled:opacity-50"
+            className="h-10 border border-blue-400/30 bg-gradient-to-r from-blue-600 to-blue-500 text-white transition-all hover:from-blue-500 hover:to-blue-400 disabled:opacity-50"
           >
             {editLoading ? t("Saving...") : t("Save Changes")}
           </Button>
@@ -379,22 +410,22 @@ export default function ClientDetailsContent() {
             size="sm"
             variant="outline"
             onClick={() => setIsEditing(false)}
-            className="border-slate-600 bg-slate-800/50 text-slate-200 hover:bg-slate-700 hover:text-white"
+            className="h-10 border-slate-600 bg-slate-800/50 text-slate-200 hover:bg-slate-700 hover:text-white"
           >
             {t("Cancel")}
           </Button>
         </div>
       </div>
     ) : (
-      <div className="flex flex-col gap-3">
+      <div className="flex min-w-0 flex-col gap-3">
         <div>
           <p className="mb-1 text-xs font-semibold uppercase tracking-[0.2em] text-blue-400">
             {t("Client Details")}
           </p>
-          <h1 className="bg-gradient-to-r from-white via-blue-100 to-blue-400 bg-clip-text text-3xl font-bold tracking-tight text-transparent">
+          <h1 className="break-words bg-gradient-to-r from-white via-blue-100 to-blue-400 bg-clip-text text-2xl font-bold tracking-tight text-transparent sm:text-3xl">
             {client.name}
           </h1>
-          <p className="mt-2 text-sm text-slate-400">
+          <p dir="ltr" className="mt-2 text-sm text-slate-400">
             {client.mobile_number}
           </p>
         </div>
@@ -417,7 +448,7 @@ export default function ClientDetailsContent() {
           variant="outline"
           size="sm"
           onClick={startEditing}
-          className="border-blue-400/30 bg-blue-500/10 text-blue-200 transition-all hover:border-blue-300/60 hover:bg-blue-500/20 hover:text-white"
+          className="h-10 border-blue-400/30 bg-blue-500/10 text-blue-200 transition-all hover:border-blue-300/60 hover:bg-blue-500/20 hover:text-white"
         >
           {t("Edit Client")}
         </Button>
@@ -427,7 +458,7 @@ export default function ClientDetailsContent() {
             variant="destructive"
             size="sm"
             onClick={openDeactivateConfirm}
-            className="border border-red-400/20 bg-red-500/10 text-red-300 transition-all hover:bg-red-500/20 hover:text-red-200"
+            className="h-10 border border-red-400/20 bg-red-500/10 text-red-300 transition-all hover:bg-red-500/20 hover:text-red-200"
           >
             {t("Deactivate Client")}
           </Button>
@@ -436,7 +467,7 @@ export default function ClientDetailsContent() {
             variant="outline"
             size="sm"
             onClick={handleActivate}
-            className="border border-emerald-400/20 bg-emerald-500/10 text-emerald-300 transition-all hover:bg-emerald-500/20 hover:text-emerald-200"
+            className="h-10 border border-emerald-400/20 bg-emerald-500/10 text-emerald-300 transition-all hover:bg-emerald-500/20 hover:text-emerald-200"
           >
             {t("Activate Client")}
           </Button>
@@ -460,7 +491,7 @@ export default function ClientDetailsContent() {
       href={`/clients/${clientId}/vehicles/new`}
       className={
         buttonVariants({ size: "sm" }) +
-        " w-fit border border-blue-400/30 bg-gradient-to-r from-blue-600 to-blue-500 font-semibold text-white shadow-lg shadow-blue-950/30 transition-all hover:from-blue-500 hover:to-blue-400"
+        " h-10 w-fit border border-blue-400/30 bg-gradient-to-r from-blue-600 to-blue-500 font-semibold text-white shadow-lg shadow-blue-950/30 transition-all hover:from-blue-500 hover:to-blue-400"
       }
     >
       + {t("Add Vehicle")}
@@ -468,7 +499,7 @@ export default function ClientDetailsContent() {
   </div>
 
   {/* Vehicles Table */}
-  <div className="overflow-hidden rounded-2xl border border-blue-500/30 bg-gradient-to-br from-[#0b1733] via-[#0b1530] to-[#080f20] shadow-[0_0_30px_rgba(37,99,235,0.08)]">
+  <div className="hidden overflow-hidden rounded-2xl border border-blue-500/30 bg-gradient-to-br from-[#0b1733] via-[#0b1530] to-[#080f20] shadow-[0_0_30px_rgba(37,99,235,0.08)] md:block">
     <div className="overflow-x-auto">
       <Table>
         <TableHeader>
@@ -514,15 +545,7 @@ export default function ClientDetailsContent() {
               </TableCell>
 
               <TableCell className="py-4">
-                <a
-                  href={`/vehicles/${v.id}/service-records/new`}
-                  className={
-                    buttonVariants({ size: "sm", variant: "outline" }) +
-                    " whitespace-nowrap border-blue-400/30 bg-blue-500/10 text-blue-200 transition-all hover:border-blue-300/60 hover:bg-blue-500/20 hover:text-white"
-                  }
-                >
-                  + {t("Add Record")}
-                </a>
+                {renderVehicleActions(v)}
               </TableCell>
             </TableRow>
           ))}
@@ -556,6 +579,55 @@ export default function ClientDetailsContent() {
     </div>
   </div>
 
+  <div className="space-y-3 md:hidden">
+    {client.vehicles.length === 0 ? (
+      <div className="rounded-2xl border border-blue-500/30 bg-gradient-to-br from-[#0b1733] via-[#0b1530] to-[#080f20] p-6 text-center">
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-blue-400/20 bg-blue-500/10">
+          <Car size={24} className="text-blue-300" />
+        </div>
+        <p className="text-sm font-medium text-slate-200">{t("No vehicles yet")}</p>
+        <p className="mx-auto mt-1 max-w-sm text-xs text-slate-500">
+          {t("Add a vehicle to start logging services and reminders for this client.")}
+        </p>
+        <Link
+          href={`/clients/${clientId}/vehicles/new`}
+          className={
+            buttonVariants({ size: "sm" }) +
+            " mt-4 h-10 border border-blue-400/30 bg-gradient-to-r from-blue-600 to-blue-500 font-semibold text-white hover:from-blue-500 hover:to-blue-400"
+          }
+        >
+          + {t("Add Vehicle")}
+        </Link>
+      </div>
+    ) : (
+      client.vehicles.map((vehicle) => (
+        <article
+          key={`mobile-${vehicle.id}`}
+          className="min-w-0 rounded-2xl border border-blue-500/30 bg-gradient-to-br from-[#0b1733] via-[#0b1530] to-[#080f20] p-4 shadow-[0_0_30px_rgba(37,99,235,0.08)]"
+        >
+          <h3 dir="ltr" className="break-words font-semibold text-blue-200">
+            {vehicle.plate_number}
+          </h3>
+          <div className="mt-4 grid min-w-0 grid-cols-2 gap-3 text-sm">
+            <div className="min-w-0">
+              <p className="text-xs text-slate-500">{t("Make")}</p>
+              <p className="truncate text-slate-300">{vehicle.make}</p>
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs text-slate-500">{t("Model")}</p>
+              <p className="truncate text-slate-300">{vehicle.model}</p>
+            </div>
+            <div>
+              <p className="text-xs text-slate-500">{t("Year")}</p>
+              <p dir="ltr" className="text-slate-300">{vehicle.year}</p>
+            </div>
+          </div>
+          <div className="mt-4">{renderVehicleActions(vehicle)}</div>
+        </article>
+      ))
+    )}
+  </div>
+
   {/* Deactivate confirmation dialog */}
   {showDeactivateConfirm && (
     <div
@@ -570,7 +642,7 @@ export default function ClientDetailsContent() {
         aria-labelledby="deactivate-title"
         aria-describedby="deactivate-desc"
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-md rounded-2xl border border-red-500/30 bg-gradient-to-br from-[#0b1733] via-[#0b1530] to-[#080f20] p-6 shadow-[0_0_40px_rgba(239,68,68,0.12)]"
+        className="w-full max-w-md rounded-2xl border border-red-500/30 bg-gradient-to-br from-[#0b1733] via-[#0b1530] to-[#080f20] p-5 shadow-[0_0_40px_rgba(239,68,68,0.12)] sm:p-6"
       >
         <h2 id="deactivate-title" className="text-lg font-bold text-white">
         {t("Deactivate {name}?").replace("{name}", client.name)}
@@ -581,18 +653,18 @@ export default function ClientDetailsContent() {
 
         {deactivateError && (
           <div className="mt-4 rounded-lg border border-red-500/25 bg-red-500/10 px-4 py-3">
-            <p className="text-sm text-red-300">{t(deactivateError)}</p>
+            <p className="break-words text-sm text-red-300">{t(deactivateError)}</p>
           </div>
         )}
 
-        <div className="mt-6 flex justify-end gap-2">
+        <div className="mt-6 flex flex-wrap justify-end gap-2">
           <Button
             size="sm"
             variant="outline"
             autoFocus
             disabled={deactivateLoading}
             onClick={() => setShowDeactivateConfirm(false)}
-            className="border-slate-600 bg-slate-800/50 text-slate-200 hover:bg-slate-700 hover:text-white"
+            className="h-10 border-slate-600 bg-slate-800/50 text-slate-200 hover:bg-slate-700 hover:text-white"
           >
             {t("Cancel")}
           </Button>
@@ -602,7 +674,7 @@ export default function ClientDetailsContent() {
             variant="destructive"
             disabled={deactivateLoading}
             onClick={handleDeactivate}
-            className="border border-red-400/30 bg-red-600 text-white hover:bg-red-500 disabled:opacity-60"
+            className="h-10 border border-red-400/30 bg-red-600 text-white hover:bg-red-500 disabled:opacity-60"
           >
             {deactivateLoading ? t("Deactivating...") : t("Yes, deactivate")}
           </Button>

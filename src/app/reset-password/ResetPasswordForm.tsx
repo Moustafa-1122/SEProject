@@ -58,7 +58,7 @@ export default function ResetPasswordForm() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#060b16] p-4 text-slate-100">
-      <div className="w-full max-w-md rounded-3xl border border-blue-500/20 bg-[#0a1224]/90 p-8 shadow-[0_0_80px_rgba(37,99,235,0.10)]">
+      <div className="w-full min-w-0 max-w-md rounded-3xl border border-blue-500/20 bg-[#0a1224]/90 p-5 shadow-[0_0_80px_rgba(37,99,235,0.10)] sm:p-8">
         {!token ? (
           <div className="text-center">
             <h1 className="text-2xl font-bold text-white">{t("Invalid reset link")}</h1>
@@ -133,7 +133,7 @@ export default function ResetPasswordForm() {
                   role="alert"
                   className="rounded-xl border border-red-500/25 bg-red-500/10 px-4 py-3"
                 >
-                  <p className="text-sm leading-5 text-red-300">{t(error)}</p>
+                  <p className="break-words text-sm leading-5 text-red-300">{t(error)}</p>
                   {error.toLowerCase().includes("link") && (
                     <Link
                       href="/forgot-password"

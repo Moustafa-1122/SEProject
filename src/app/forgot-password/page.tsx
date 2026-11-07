@@ -43,13 +43,13 @@ export default function ForgotPasswordPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#060b16] p-4 text-slate-100">
-      <div className="w-full max-w-md rounded-3xl border border-blue-500/20 bg-[#0a1224]/90 p-8 shadow-[0_0_80px_rgba(37,99,235,0.10)]">
+      <div className="w-full min-w-0 max-w-md rounded-3xl border border-blue-500/20 bg-[#0a1224]/90 p-5 shadow-[0_0_80px_rgba(37,99,235,0.10)] sm:p-8">
         {sent ? (
           <div className="text-center">
             <h1 className="text-2xl font-bold text-white">{t("Check your email")}</h1>
             <p className="mt-3 text-sm leading-6 text-slate-400">
               {t("If an account exists for")}{" "}
-              <span className="font-medium text-slate-200">{email}</span>
+              <span className="break-all font-medium text-slate-200" dir="ltr">{email}</span>
               {t(", we sent a link to reset your password. It's valid for 15 minutes.")}
             </p>
             <Link
@@ -79,6 +79,7 @@ export default function ForgotPasswordPage() {
                 <Input
                   id="email"
                   type="email"
+                  dir="ltr"
                   autoComplete="email"
                   placeholder={t("you@example.com")}
                   value={email}
@@ -93,7 +94,7 @@ export default function ForgotPasswordPage() {
                   role="alert"
                   className="rounded-xl border border-red-500/25 bg-red-500/10 px-4 py-3"
                 >
-                  <p className="text-sm leading-5 text-red-300">{t(error)}</p>
+                  <p className="break-words text-sm leading-5 text-red-300">{t(error)}</p>
                 </div>
               )}
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -11,10 +12,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import Link from "next/dist/client/link";
 import { useLanguage } from "@/components/language-provider";
 
-export default function NewVehiclePage() {
+function NewVehiclePageContent() {
   const { t } = useLanguage();
   const router = useRouter();// Get the router object for navigation
   const params = useParams();// Get the client ID from the URL parameters
@@ -56,19 +56,19 @@ export default function NewVehiclePage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#060b16] p-4 text-slate-100 sm:p-8">
+    <div className="flex min-h-screen items-center justify-center bg-[#060b16] p-4 pt-16 text-slate-100 sm:p-8">
 
 <Button
   variant="outline"
   onClick={() => router.back()}
-  className="fixed start-4 top-4 z-50 inline-flex items-center gap-2 rounded-lg border border-blue-500/30 bg-gradient-to-r from-[#0b1733] to-[#080f20] px-4 py-2 text-sm font-medium text-blue-300 shadow-[0_0_20px_rgba(37,99,235,0.08)] transition-all duration-200 hover:border-blue-400/60 hover:bg-blue-500/10 hover:text-white hover:shadow-[0_0_20px_rgba(37,99,235,0.2)] focus-visible:ring-2 focus-visible:ring-blue-500/50"
+  className="fixed start-4 top-4 z-50 inline-flex h-11 items-center gap-2 rounded-lg border border-blue-500/30 bg-gradient-to-r from-[#0b1733] to-[#080f20] px-4 text-sm font-medium text-blue-300 shadow-[0_0_20px_rgba(37,99,235,0.08)] transition-all duration-200 hover:border-blue-400/60 hover:bg-blue-500/10 hover:text-white hover:shadow-[0_0_20px_rgba(37,99,235,0.2)] focus-visible:ring-2 focus-visible:ring-blue-500/50"
 >
   <span className="text-lg rtl:rotate-180">←</span>
   {t("Back")}
 </Button>
 
-  <Card className="w-full max-w-md overflow-hidden rounded-2xl border border-blue-500/30 bg-gradient-to-br from-[#0b1733] via-[#0b1530] to-[#080f20] text-slate-100 shadow-[0_0_40px_rgba(37,99,235,0.10)]">
-    <CardHeader className="border-b border-blue-500/15 px-6 pb-5 pt-6">
+  <Card className="w-full min-w-0 max-w-md overflow-hidden rounded-2xl border border-blue-500/30 bg-gradient-to-br from-[#0b1733] via-[#0b1530] to-[#080f20] text-slate-100 shadow-[0_0_40px_rgba(37,99,235,0.10)]">
+    <CardHeader className="border-b border-blue-500/15 px-4 pb-5 pt-6 sm:px-6">
       <CardTitle className="bg-gradient-to-r from-white via-blue-100 to-blue-400 bg-clip-text text-2xl font-bold text-transparent">
         {t("Add Vehicle")}
       </CardTitle>
@@ -78,7 +78,7 @@ export default function NewVehiclePage() {
       </p>
     </CardHeader>
 
-    <CardContent className="p-6">
+    <CardContent className="p-4 sm:p-6">
       <form onSubmit={handleSubmit} className="flex flex-col gap-5">
         {/* Plate Number */}
         <div className="flex flex-col gap-2">
@@ -95,7 +95,8 @@ export default function NewVehiclePage() {
             onChange={(e) => setPlateNumber(e.target.value)}
             placeholder={t("Enter plate number")}
             required
-            className="border-blue-500/25 bg-[#060d1d]/80 text-slate-100 placeholder:text-slate-500 focus-visible:ring-blue-500/50"
+            dir="ltr"
+            className="h-11 w-full min-w-0 border-blue-500/25 bg-[#060d1d]/80 text-slate-100 placeholder:text-slate-500 focus-visible:ring-blue-500/50"
           />
         </div>
 
@@ -114,7 +115,7 @@ export default function NewVehiclePage() {
             onChange={(e) => setMake(e.target.value)}
             placeholder={t("e.g. Toyota")}
             required
-            className="border-blue-500/25 bg-[#060d1d]/80 text-slate-100 placeholder:text-slate-500 focus-visible:ring-blue-500/50"
+            className="h-11 w-full min-w-0 border-blue-500/25 bg-[#060d1d]/80 text-slate-100 placeholder:text-slate-500 focus-visible:ring-blue-500/50"
           />
         </div>
 
@@ -133,7 +134,7 @@ export default function NewVehiclePage() {
             onChange={(e) => setModel(e.target.value)}
             placeholder={t("e.g. Corolla")}
             required
-            className="border-blue-500/25 bg-[#060d1d]/80 text-slate-100 placeholder:text-slate-500 focus-visible:ring-blue-500/50"
+            className="h-11 w-full min-w-0 border-blue-500/25 bg-[#060d1d]/80 text-slate-100 placeholder:text-slate-500 focus-visible:ring-blue-500/50"
           />
         </div>
 
@@ -149,18 +150,19 @@ export default function NewVehiclePage() {
           <Input
             id="year"
             type="number"
+            inputMode="numeric"
             value={year}
             onChange={(e) => setYear(e.target.value)}
             placeholder={t("e.g. 2022")}
             required
-            className="border-blue-500/25 bg-[#060d1d]/80 text-slate-100 placeholder:text-slate-500 focus-visible:ring-blue-500/50"
+            className="h-11 w-full min-w-0 border-blue-500/25 bg-[#060d1d]/80 text-slate-100 placeholder:text-slate-500 focus-visible:ring-blue-500/50"
           />
         </div>
 
         {/* Error Message */}
         {error && (
           <div className="rounded-lg border border-red-500/25 bg-red-500/10 px-4 py-3">
-            <p className="text-sm text-red-300">{t(error)}</p>
+            <p className="break-words text-sm text-red-300">{t(error)}</p>
           </div>
         )}
 
@@ -168,7 +170,7 @@ export default function NewVehiclePage() {
         <Button
           type="submit"
           disabled={loading}
-          className="mt-1 w-full border border-blue-400/30 bg-gradient-to-r from-blue-600 to-blue-500 font-semibold text-white shadow-lg shadow-blue-950/30 transition-all hover:from-blue-500 hover:to-blue-400 disabled:cursor-not-allowed disabled:opacity-50"
+          className="mt-1 h-11 w-full border border-blue-400/30 bg-gradient-to-r from-blue-600 to-blue-500 font-semibold text-white shadow-lg shadow-blue-950/30 transition-all hover:from-blue-500 hover:to-blue-400 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {loading ? t("Saving...") : t("Add Vehicle")}
         </Button>
@@ -176,5 +178,13 @@ export default function NewVehiclePage() {
     </CardContent>
   </Card>
 </div>
+  );
+}
+
+export default function NewVehiclePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#060b16]" />}>
+      <NewVehiclePageContent />
+    </Suspense>
   );
 }
