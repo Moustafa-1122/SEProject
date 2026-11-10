@@ -227,6 +227,8 @@ const translations: Record<string, string> = {
   "Couldn't load dashboard data":"تعذّر تحميل بيانات لوحة التحكم",
   "new this month":"جديد هذا الشهر",
   "No reminders match this filter":"لا توجد تذكيرات مطابقة لهذا الفلتر",
+  "Snow on": "الثلج بيطلع",
+  "Snow off": "الثلج يختفي",
 
 };
 

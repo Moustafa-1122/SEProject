@@ -1,5 +1,6 @@
 "use client";
 
+import {Snowfall} from "react-snowfall";
 import { Suspense, useEffect, useState } from "react";
 import {
   Table,
@@ -36,6 +37,9 @@ import { useLanguage } from "@/components/language-provider";
 import { LanguageToggle } from "@/components/language-toggle";
 import { ThemeToggle } from "@/components/theme-toggle";
 import type { LucideIcon } from "lucide-react";
+
+
+
 
 type Reminder = {
   id: number;
@@ -200,6 +204,18 @@ function DashboardContent() {
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<"all" | ReminderStatus>("all");
+
+
+const [on, setOn] = useState(true);      // تشغيل/إيقاف الثلج
+const [flake, setFlake] = useState(0);   // تغيير الـ key بيعيد تشغيل الأنيميشن
+const [mounted, setMounted] = useState(false);
+
+useEffect(() => {
+  const frame = requestAnimationFrame(() => setMounted(true));
+  return () => cancelAnimationFrame(frame);
+}, []);
+
+  
 
   useEffect(() => {
     async function fetchReminders() {
@@ -367,7 +383,9 @@ function DashboardContent() {
     }
 
     return (
+     
       <div className="flex min-w-0 flex-wrap items-center gap-2">
+
         {!r.contacted_date && (
           <Button
             size="sm"
@@ -415,6 +433,15 @@ function DashboardContent() {
 
   return (
     <div className="flex min-h-screen bg-[#060b16] text-slate-100">
+
+      {mounted && on && (
+        <Snowfall
+          key={flake}
+          snowflakeCount={80}
+          style={{ position: "fixed", width: "100vw", height: "100vh", zIndex: 20, pointerEvents: "none" }}
+        />
+      )}
+
       {/* ===== Mobile overlay (click to close) ===== */}
       {mobileSidebarOpen && (
         <div
@@ -465,6 +492,7 @@ function DashboardContent() {
             const isActive = pathname === item.href;
 
             return (
+
               <Link
                 key={item.href}
                 href={item.href}
@@ -523,6 +551,7 @@ function DashboardContent() {
             <LogOut size={16} />
             {t("Logout")}
           </Button>
+
         </div>
       </aside>
 
@@ -572,17 +601,27 @@ function DashboardContent() {
               </div>
             </div>
 
-            <Link
-              href="/clients"
-              className="group inline-flex h-10 items-center gap-2 whitespace-nowrap rounded-xl border border-blue-500/50 bg-gradient-to-r from-[#0b1733] to-[#080f20] px-3 text-sm font-medium text-white shadow-sm transition-all duration-200 hover:border-blue-400 hover:shadow-[0_0_15px_rgba(37,99,235,0.2)]"
-            >
-              <Users size={17} className="text-blue-400" />
-              {t("Show All Clients")}
-              <ArrowRight
-                size={15}
-                className="text-blue-400 transition-transform group-hover:translate-x-1 rtl:rotate-180 rtl:group-hover:-translate-x-1"
-              />
-            </Link>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => (on ? setOn(false) : (setFlake((f) => f + 1), setOn(true)))}
+                aria-pressed={on}
+                className="inline-flex h-10 items-center gap-2 rounded-xl border border-blue-500/50 bg-gradient-to-r from-[#0b1733] to-[#080f20] px-3 text-sm text-white transition-all hover:border-blue-400"
+              >
+                ❄️ {on ? t("Snow off") : t("Snow on")}
+              </button>
+              <Link
+                href="/clients"
+                className="group inline-flex h-10 items-center gap-2 whitespace-nowrap rounded-xl border border-blue-500/50 bg-gradient-to-r from-[#0b1733] to-[#080f20] px-3 text-sm font-medium text-white shadow-sm transition-all duration-200 hover:border-blue-400 hover:shadow-[0_0_15px_rgba(37,99,235,0.2)]"
+              >
+                <Users size={17} className="text-blue-400" />
+                {t("Show All Clients")}
+                <ArrowRight
+                  size={15}
+                  className="text-blue-400 transition-transform group-hover:translate-x-1 rtl:rotate-180 rtl:group-hover:-translate-x-1"
+                />
+              </Link>
+            </div>
           </div>
 
           {/* Stats cards */}
